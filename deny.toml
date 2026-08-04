@@ -1,0 +1,25 @@
+# Dependency policy for `cargo deny check advisories licenses` (see .github/workflows/sdk-ci.yml).
+
+[advisories]
+# Vulnerability advisories are always errors. These three default to a softer level, so they
+# are raised explicitly: an unmaintained or unsound dependency should block a release too.
+unmaintained = "all"
+unsound = "all"
+yanked = "deny"
+# Advisories triaged as not applicable go here, ideally with a `reason`:
+#   ignore = [{ id = "RUSTSEC-0000-0000", reason = "unreachable from this crate" }]
+ignore = []
+
+[licenses]
+# Permissive-only allow-list. A dependency under any other license fails the check until it is
+# reviewed and added here on purpose.
+allow = [
+  "MIT",
+  "Apache-2.0",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "ISC",
+  "Unicode-3.0",
+  "Zlib",
+  "CDLA-Permissive-2.0",
+]

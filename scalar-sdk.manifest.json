@@ -1,0 +1,2880 @@
+{
+  "name": "ScalarGalaxy",
+  "slug": "scalarGalaxy",
+  "generatorVersion": "0.22.4",
+  "servers": [
+    "https://galaxy.scalar.com",
+    "{protocol}://void.scalar.com/{path}"
+  ],
+  "environments": {
+    "production": "https://galaxy.scalar.com",
+    "responds_with_your_request_data": "{protocol}://void.scalar.com/{path}"
+  },
+  "environmentOrder": [
+    "production",
+    "responds_with_your_request_data"
+  ],
+  "auth": [
+    "bearer",
+    "basic",
+    "apiKey",
+    "apiKey",
+    "apiKey",
+    "oauth2",
+    "oauth2"
+  ],
+  "authDetails": [
+    {
+      "kind": "bearer",
+      "id": "bearerAuth"
+    },
+    {
+      "kind": "basic",
+      "id": "basicAuth"
+    },
+    {
+      "kind": "apiKey",
+      "id": "apiKeyHeader",
+      "in": "header",
+      "paramName": "X-API-Key"
+    },
+    {
+      "kind": "apiKey",
+      "id": "apiKeyQuery",
+      "in": "query",
+      "paramName": "api_key"
+    },
+    {
+      "kind": "apiKey",
+      "id": "apiKeyCookie",
+      "in": "cookie",
+      "paramName": "api_key"
+    },
+    {
+      "kind": "oauth2",
+      "id": "oAuth2",
+      "flows": [
+        {
+          "kind": "authorizationCode",
+          "authorizationUrl": "https://galaxy.scalar.com/oauth/authorize",
+          "tokenUrl": "https://galaxy.scalar.com/oauth/token",
+          "refreshUrl": "",
+          "scopes": [
+            "read:account",
+            "write:planets",
+            "read:planets"
+          ]
+        },
+        {
+          "kind": "clientCredentials",
+          "tokenUrl": "https://galaxy.scalar.com/oauth/token",
+          "refreshUrl": "",
+          "scopes": [
+            "read:account",
+            "write:planets",
+            "read:planets"
+          ]
+        },
+        {
+          "kind": "password",
+          "tokenUrl": "https://galaxy.scalar.com/oauth/token",
+          "refreshUrl": "",
+          "scopes": [
+            "read:account",
+            "write:planets",
+            "read:planets"
+          ]
+        },
+        {
+          "kind": "implicit",
+          "authorizationUrl": "https://galaxy.scalar.com/oauth/authorize",
+          "refreshUrl": "",
+          "scopes": [
+            "read:account",
+            "write:planets",
+            "read:planets"
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "oauth2",
+      "id": "openIdConnect",
+      "flows": [],
+      "openIdConnectUrl": "https://galaxy.scalar.com/.well-known/openid-configuration"
+    }
+  ],
+  "clientHeaderParams": [],
+  "schemas": [
+    {
+      "name": "user",
+      "source": "user",
+      "publicAliases": [],
+      "deprecated": false,
+      "type": {
+        "kind": "object",
+        "properties": [
+          {
+            "name": "id",
+            "publicName": "id",
+            "required": false,
+            "deprecated": false,
+            "access": "readOnly",
+            "extensions": {
+              "source": [
+                "examples"
+              ],
+              "examples": 1
+            },
+            "type": {
+              "kind": "primitive",
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "name",
+            "publicName": "name",
+            "required": false,
+            "deprecated": false,
+            "extensions": {
+              "source": [
+                "examples"
+              ],
+              "examples": "Marc"
+            },
+            "type": {
+              "kind": "primitive",
+              "type": "string"
+            }
+          }
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "credentials",
+      "source": "credentials",
+      "publicAliases": [],
+      "deprecated": false,
+      "type": {
+        "kind": "object",
+        "properties": [
+          {
+            "name": "email",
+            "publicName": "email",
+            "required": true,
+            "deprecated": false,
+            "extensions": {
+              "source": [
+                "examples"
+              ],
+              "examples": "marc@scalar.com"
+            },
+            "type": {
+              "kind": "primitive",
+              "type": "string",
+              "format": "email"
+            }
+          },
+          {
+            "name": "password",
+            "publicName": "password",
+            "required": true,
+            "deprecated": false,
+            "access": "writeOnly",
+            "extensions": {
+              "source": [
+                "examples"
+              ],
+              "examples": "i-love-scalar"
+            },
+            "type": {
+              "kind": "primitive",
+              "type": "string"
+            }
+          }
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "token",
+      "source": "token",
+      "publicAliases": [],
+      "deprecated": false,
+      "type": {
+        "kind": "object",
+        "properties": [
+          {
+            "name": "token",
+            "publicName": "token",
+            "required": false,
+            "deprecated": false,
+            "extensions": {
+              "source": [
+                "examples"
+              ],
+              "examples": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+            },
+            "type": {
+              "kind": "primitive",
+              "type": "string"
+            }
+          }
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "celestial_body",
+      "source": "celestial_body",
+      "publicAliases": [],
+      "deprecated": false,
+      "type": {
+        "kind": "union",
+        "variants": [
+          {
+            "kind": "ref",
+            "name": "planet"
+          },
+          {
+            "kind": "ref",
+            "name": "satellite"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "terrestrial": "planet",
+            "gas_giant": "planet",
+            "ice_giant": "planet",
+            "dwarf": "planet",
+            "super_earth": "planet",
+            "moon": "satellite",
+            "asteroid": "satellite",
+            "comet": "satellite"
+          }
+        },
+        "variantNames": [
+          null,
+          null
+        ]
+      }
+    },
+    {
+      "name": "planet",
+      "source": "planet",
+      "publicAliases": [],
+      "deprecated": false,
+      "type": {
+        "kind": "object",
+        "properties": [
+          {
+            "name": "id",
+            "publicName": "id",
+            "required": true,
+            "deprecated": false,
+            "access": "readOnly",
+            "extensions": {
+              "source": [
+                "examples"
+              ],
+              "examples": 1
+            },
+            "type": {
+              "kind": "primitive",
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "name",
+            "publicName": "name",
+            "required": true,
+            "deprecated": false,
+            "extensions": {
+              "source": [
+                "examples"
+              ],
+              "examples": "Mars"
+            },
+            "type": {
+              "kind": "primitive",
+              "type": "string"
+            }
+          },
+          {
+            "name": "description",
+            "publicName": "description",
+            "required": false,
+            "deprecated": false,
+            "extensions": {
+              "source": [
+                "examples"
+              ],
+              "examples": "The red planet"
+            },
+            "type": {
+              "kind": "union",
+              "variants": [
+                {
+                  "kind": "primitive",
+                  "type": "string"
+                },
+                {
+                  "kind": "null"
+                }
+              ]
+            }
+          },
+          {
+            "name": "type",
+            "publicName": "type",
+            "required": false,
+            "deprecated": false,
+            "extensions": {
+              "source": [
+                "examples"
+              ],
+              "examples": "terrestrial"
+            },
+            "type": {
+              "kind": "enum",
+              "values": [
+                "terrestrial",
+                "gas_giant",
+                "ice_giant",
+                "dwarf",
+                "super_earth"
+              ],
+              "names": [
+                "Terrestrial",
+                "GasGiant",
+                "IceGiant",
+                "Dwarf",
+                "SuperEarth"
+              ],
+              "deprecations": [
+                false,
+                false,
+                false,
+                false,
+                false
+              ]
+            }
+          },
+          {
+            "name": "habitabilityIndex",
+            "publicName": "habitabilityIndex",
+            "required": false,
+            "deprecated": false,
+            "extensions": {
+              "source": [
+                "examples"
+              ],
+              "examples": 0.68
+            },
+            "type": {
+              "kind": "primitive",
+              "type": "number",
+              "format": "float",
+              "validation": {}
+            }
+          },
+          {
+            "name": "physicalProperties",
+            "publicName": "physicalProperties",
+            "required": false,
+            "deprecated": false,
+            "type": {
+              "kind": "object",
+              "properties": [
+                {
+                  "name": "mass",
+                  "publicName": "mass",
+                  "required": false,
+                  "deprecated": false,
+                  "extensions": {
+                    "source": [
+                      "examples"
+                    ],
+                    "examples": 0.107
+                  },
+                  "type": {
+                    "kind": "primitive",
+                    "type": "number",
+                    "format": "float"
+                  }
+                },
+                {
+                  "name": "radius",
+                  "publicName": "radius",
+                  "required": false,
+                  "deprecated": false,
+                  "extensions": {
+                    "source": [
+                      "examples"
+                    ],
+                    "examples": 0.532
+                  },
+                  "type": {
+                    "kind": "primitive",
+                    "type": "number",
+                    "format": "float"
+                  }
+                },
+                {
+                  "name": "gravity",
+                  "publicName": "gravity",
+                  "required": false,
+                  "deprecated": false,
+                  "extensions": {
+                    "source": [
+                      "examples"
+                    ],
+                    "examples": 0.378
+                  },
+                  "type": {
+                    "kind": "primitive",
+                    "type": "number",
+                    "format": "float"
+                  }
+                },
+                {
+                  "name": "temperature",
+                  "publicName": "temperature",
+                  "required": false,
+                  "deprecated": false,
+                  "type": {
+                    "kind": "object",
+                    "properties": [
+                      {
+                        "name": "min",
+                        "publicName": "min",
+                        "required": false,
+                        "deprecated": false,
+                        "extensions": {
+                          "source": [
+                            "examples"
+                          ],
+                          "examples": 130
+                        },
+                        "type": {
+                          "kind": "primitive",
+                          "type": "number",
+                          "format": "float"
+                        }
+                      },
+                      {
+                        "name": "max",
+                        "publicName": "max",
+                        "required": false,
+                        "deprecated": false,
+                        "extensions": {
+                          "source": [
+                            "examples"
+                          ],
+                          "examples": 308
+                        },
+                        "type": {
+                          "kind": "primitive",
+                          "type": "number",
+                          "format": "float"
+                        }
+                      },
+                      {
+                        "name": "average",
+                        "publicName": "average",
+                        "required": false,
+                        "deprecated": false,
+                        "extensions": {
+                          "source": [
+                            "examples"
+                          ],
+                          "examples": 210
+                        },
+                        "type": {
+                          "kind": "primitive",
+                          "type": "number",
+                          "format": "float"
+                        }
+                      }
+                    ],
+                    "additionalProperties": {
+                      "kind": "primitive",
+                      "type": "number",
+                      "format": "float"
+                    }
+                  }
+                }
+              ],
+              "additionalProperties": {
+                "kind": "primitive",
+                "type": "number",
+                "format": "float"
+              }
+            }
+          },
+          {
+            "name": "atmosphere",
+            "publicName": "atmosphere",
+            "required": false,
+            "deprecated": false,
+            "type": {
+              "kind": "array",
+              "items": {
+                "kind": "object",
+                "properties": [
+                  {
+                    "name": "compound",
+                    "publicName": "compound",
+                    "required": false,
+                    "deprecated": false,
+                    "extensions": {
+                      "source": [
+                        "examples"
+                      ],
+                      "examples": "CO2"
+                    },
+                    "type": {
+                      "kind": "primitive",
+                      "type": "string"
+                    }
+                  },
+                  {
+                    "name": "percentage",
+                    "publicName": "percentage",
+                    "required": false,
+                    "deprecated": false,
+                    "extensions": {
+                      "source": [
+                        "examples"
+                      ],
+                      "examples": 95.3
+                    },
+                    "type": {
+                      "kind": "primitive",
+                      "type": "number",
+                      "format": "float"
+                    }
+                  }
+                ],
+                "additionalProperties": {
+                  "kind": "primitive",
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "discoveredAt",
+            "publicName": "discoveredAt",
+            "required": false,
+            "deprecated": false,
+            "extensions": {
+              "source": [
+                "examples"
+              ],
+              "examples": "1610-01-07T00:00:00Z"
+            },
+            "type": {
+              "kind": "primitive",
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "image",
+            "publicName": "image",
+            "required": false,
+            "deprecated": false,
+            "extensions": {
+              "source": [
+                "examples"
+              ],
+              "examples": "https://cdn.scalar.com/photos/mars.jpg"
+            },
+            "type": {
+              "kind": "union",
+              "variants": [
+                {
+                  "kind": "primitive",
+                  "type": "string"
+                },
+                {
+                  "kind": "null"
+                }
+              ]
+            }
+          },
+          {
+            "name": "satellites",
+            "publicName": "satellites",
+            "required": false,
+            "deprecated": false,
+            "type": {
+              "kind": "array",
+              "items": {
+                "kind": "ref",
+                "name": "satellite"
+              }
+            }
+          },
+          {
+            "name": "creator",
+            "publicName": "creator",
+            "required": false,
+            "deprecated": false,
+            "type": {
+              "kind": "ref",
+              "name": "user"
+            }
+          },
+          {
+            "name": "tags",
+            "publicName": "tags",
+            "required": false,
+            "deprecated": false,
+            "extensions": {
+              "source": [
+                "examples"
+              ],
+              "examples": [
+                "solar-system",
+                "rocky",
+                "explored"
+              ]
+            },
+            "type": {
+              "kind": "array",
+              "items": {
+                "kind": "primitive",
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "lastUpdated",
+            "publicName": "lastUpdated",
+            "required": false,
+            "deprecated": false,
+            "access": "readOnly",
+            "extensions": {
+              "source": [
+                "examples"
+              ],
+              "examples": "2024-01-15T14:30:00Z"
+            },
+            "type": {
+              "kind": "primitive",
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "successCallbackUrl",
+            "publicName": "successCallbackUrl",
+            "required": false,
+            "deprecated": false,
+            "extensions": {
+              "source": [
+                "examples"
+              ],
+              "examples": "https://example.com/webhook"
+            },
+            "type": {
+              "kind": "primitive",
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          {
+            "name": "failureCallbackUrl",
+            "publicName": "failureCallbackUrl",
+            "required": false,
+            "deprecated": false,
+            "extensions": {
+              "source": [
+                "examples"
+              ],
+              "examples": "https://example.com/webhook"
+            },
+            "type": {
+              "kind": "primitive",
+              "type": "string",
+              "format": "uri"
+            }
+          }
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "satellite",
+      "source": "satellite",
+      "publicAliases": [],
+      "deprecated": false,
+      "type": {
+        "kind": "object",
+        "properties": [
+          {
+            "name": "id",
+            "publicName": "id",
+            "required": false,
+            "deprecated": false,
+            "access": "readOnly",
+            "extensions": {
+              "source": [
+                "examples"
+              ],
+              "examples": 1
+            },
+            "type": {
+              "kind": "primitive",
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "name",
+            "publicName": "name",
+            "required": true,
+            "deprecated": false,
+            "extensions": {
+              "source": [
+                "examples"
+              ],
+              "examples": "Phobos"
+            },
+            "type": {
+              "kind": "primitive",
+              "type": "string"
+            }
+          },
+          {
+            "name": "description",
+            "publicName": "description",
+            "required": false,
+            "deprecated": false,
+            "extensions": {
+              "source": [
+                "examples"
+              ],
+              "examples": "Phobos is the larger and innermost of the two moons of Mars."
+            },
+            "type": {
+              "kind": "union",
+              "variants": [
+                {
+                  "kind": "primitive",
+                  "type": "string"
+                },
+                {
+                  "kind": "null"
+                }
+              ]
+            }
+          },
+          {
+            "name": "diameter",
+            "publicName": "diameter",
+            "required": false,
+            "deprecated": false,
+            "extensions": {
+              "source": [
+                "examples"
+              ],
+              "examples": 22.2
+            },
+            "type": {
+              "kind": "primitive",
+              "type": "number",
+              "format": "float"
+            }
+          },
+          {
+            "name": "type",
+            "publicName": "type",
+            "required": false,
+            "deprecated": false,
+            "extensions": {
+              "source": [
+                "examples"
+              ],
+              "examples": "moon"
+            },
+            "type": {
+              "kind": "enum",
+              "values": [
+                "moon",
+                "asteroid",
+                "comet"
+              ],
+              "names": [
+                "Moon",
+                "Asteroid",
+                "Comet"
+              ],
+              "deprecations": [
+                false,
+                false,
+                false
+              ]
+            }
+          },
+          {
+            "name": "orbit",
+            "publicName": "orbit",
+            "required": false,
+            "deprecated": false,
+            "type": {
+              "kind": "object",
+              "properties": [
+                {
+                  "name": "planet",
+                  "publicName": "planet",
+                  "required": false,
+                  "deprecated": false,
+                  "type": {
+                    "kind": "ref",
+                    "name": "planet"
+                  }
+                },
+                {
+                  "name": "orbitalPeriod",
+                  "publicName": "orbitalPeriod",
+                  "required": false,
+                  "deprecated": false,
+                  "extensions": {
+                    "source": [
+                      "examples"
+                    ],
+                    "examples": 0.319
+                  },
+                  "type": {
+                    "kind": "primitive",
+                    "type": "number",
+                    "format": "float"
+                  }
+                },
+                {
+                  "name": "distance",
+                  "publicName": "distance",
+                  "required": false,
+                  "deprecated": false,
+                  "extensions": {
+                    "source": [
+                      "examples"
+                    ],
+                    "examples": 9376
+                  },
+                  "type": {
+                    "kind": "primitive",
+                    "type": "number",
+                    "format": "float"
+                  }
+                }
+              ],
+              "additionalProperties": false
+            }
+          }
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "paginated_resource",
+      "source": "paginated_resource",
+      "publicAliases": [],
+      "deprecated": false,
+      "type": {
+        "kind": "object",
+        "properties": [
+          {
+            "name": "data",
+            "publicName": "data",
+            "required": false,
+            "deprecated": false,
+            "type": {
+              "kind": "array",
+              "items": {
+                "kind": "unknown"
+              }
+            }
+          },
+          {
+            "name": "meta",
+            "publicName": "meta",
+            "required": false,
+            "deprecated": false,
+            "type": {
+              "kind": "object",
+              "properties": [
+                {
+                  "name": "limit",
+                  "publicName": "limit",
+                  "required": false,
+                  "deprecated": false,
+                  "extensions": {
+                    "source": [
+                      "examples"
+                    ],
+                    "examples": 10
+                  },
+                  "type": {
+                    "kind": "primitive",
+                    "type": "integer",
+                    "format": "int64"
+                  }
+                },
+                {
+                  "name": "offset",
+                  "publicName": "offset",
+                  "required": false,
+                  "deprecated": false,
+                  "extensions": {
+                    "source": [
+                      "examples"
+                    ],
+                    "examples": 0
+                  },
+                  "type": {
+                    "kind": "primitive",
+                    "type": "integer",
+                    "format": "int64"
+                  }
+                },
+                {
+                  "name": "total",
+                  "publicName": "total",
+                  "required": false,
+                  "deprecated": false,
+                  "extensions": {
+                    "source": [
+                      "examples"
+                    ],
+                    "examples": 100
+                  },
+                  "type": {
+                    "kind": "primitive",
+                    "type": "integer",
+                    "format": "int64"
+                  }
+                },
+                {
+                  "name": "next",
+                  "publicName": "next",
+                  "required": false,
+                  "deprecated": false,
+                  "extensions": {
+                    "source": [
+                      "examples"
+                    ],
+                    "examples": "/planets?limit=10&offset=10"
+                  },
+                  "type": {
+                    "kind": "union",
+                    "variants": [
+                      {
+                        "kind": "primitive",
+                        "type": "string"
+                      },
+                      {
+                        "kind": "null"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "additionalProperties": false
+            }
+          }
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "ListAllDataResponseHeaders",
+      "source": "ListAllDataResponseHeaders",
+      "publicAliases": [],
+      "deprecated": false,
+      "type": {
+        "kind": "object",
+        "properties": [
+          {
+            "name": "X-Request-ID",
+            "publicName": "X-Request-ID",
+            "required": false,
+            "deprecated": false,
+            "type": {
+              "kind": "primitive",
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Pagination-Total",
+            "publicName": "X-Pagination-Total",
+            "required": false,
+            "deprecated": false,
+            "type": {
+              "kind": "primitive",
+              "type": "integer"
+            }
+          },
+          {
+            "name": "X-Pagination-Page",
+            "publicName": "X-Pagination-Page",
+            "required": false,
+            "deprecated": false,
+            "type": {
+              "kind": "primitive",
+              "type": "integer"
+            }
+          },
+          {
+            "name": "X-Pagination-Per-Page",
+            "publicName": "X-Pagination-Per-Page",
+            "required": false,
+            "deprecated": false,
+            "type": {
+              "kind": "primitive",
+              "type": "integer"
+            }
+          },
+          {
+            "name": "X-Cache-Control",
+            "publicName": "X-Cache-Control",
+            "required": false,
+            "deprecated": false,
+            "type": {
+              "kind": "primitive",
+              "type": "string"
+            }
+          }
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "CreateResponseHeaders",
+      "source": "CreateResponseHeaders",
+      "publicAliases": [],
+      "deprecated": false,
+      "type": {
+        "kind": "object",
+        "properties": [
+          {
+            "name": "X-Request-ID",
+            "publicName": "X-Request-ID",
+            "required": false,
+            "deprecated": false,
+            "type": {
+              "kind": "primitive",
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Location",
+            "publicName": "Location",
+            "required": false,
+            "deprecated": false,
+            "type": {
+              "kind": "primitive",
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          {
+            "name": "X-Processing-Time",
+            "publicName": "X-Processing-Time",
+            "required": false,
+            "deprecated": false,
+            "type": {
+              "kind": "primitive",
+              "type": "integer"
+            }
+          }
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "CreateStatus400ResponseHeaders",
+      "source": "CreateStatus400ResponseHeaders",
+      "publicAliases": [],
+      "deprecated": false,
+      "type": {
+        "kind": "object",
+        "properties": [
+          {
+            "name": "X-Request-ID",
+            "publicName": "X-Request-ID",
+            "required": false,
+            "deprecated": false,
+            "type": {
+              "kind": "primitive",
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "RetrieveResponseHeaders",
+      "source": "RetrieveResponseHeaders",
+      "publicAliases": [],
+      "deprecated": false,
+      "type": {
+        "kind": "object",
+        "properties": [
+          {
+            "name": "X-Request-ID",
+            "publicName": "X-Request-ID",
+            "required": false,
+            "deprecated": false,
+            "type": {
+              "kind": "primitive",
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "ETag",
+            "publicName": "ETag",
+            "required": false,
+            "deprecated": false,
+            "type": {
+              "kind": "primitive",
+              "type": "string"
+            }
+          },
+          {
+            "name": "Last-Modified",
+            "publicName": "Last-Modified",
+            "required": false,
+            "deprecated": false,
+            "type": {
+              "kind": "primitive",
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "X-Cache-Control",
+            "publicName": "X-Cache-Control",
+            "required": false,
+            "deprecated": false,
+            "type": {
+              "kind": "primitive",
+              "type": "string"
+            }
+          }
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "UpdateStatus400ResponseHeaders",
+      "source": "UpdateStatus400ResponseHeaders",
+      "publicAliases": [],
+      "deprecated": false,
+      "type": {
+        "kind": "object",
+        "properties": [
+          {
+            "name": "X-Request-ID",
+            "publicName": "X-Request-ID",
+            "required": false,
+            "deprecated": false,
+            "type": {
+              "kind": "primitive",
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "UploadImageResponseHeaders",
+      "source": "UploadImageResponseHeaders",
+      "publicAliases": [],
+      "deprecated": false,
+      "type": {
+        "kind": "object",
+        "properties": [
+          {
+            "name": "X-Request-ID",
+            "publicName": "X-Request-ID",
+            "required": false,
+            "deprecated": false,
+            "type": {
+              "kind": "primitive",
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Cache-Control",
+            "publicName": "X-Cache-Control",
+            "required": false,
+            "deprecated": false,
+            "type": {
+              "kind": "primitive",
+              "type": "string"
+            }
+          }
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "UploadImageStatus400ResponseHeaders",
+      "source": "UploadImageStatus400ResponseHeaders",
+      "publicAliases": [],
+      "deprecated": false,
+      "type": {
+        "kind": "object",
+        "properties": [
+          {
+            "name": "X-Request-ID",
+            "publicName": "X-Request-ID",
+            "required": false,
+            "deprecated": false,
+            "type": {
+              "kind": "primitive",
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "CreateUserResponseHeaders",
+      "source": "CreateUserResponseHeaders",
+      "publicAliases": [],
+      "deprecated": false,
+      "type": {
+        "kind": "object",
+        "properties": [
+          {
+            "name": "X-Request-ID",
+            "publicName": "X-Request-ID",
+            "required": false,
+            "deprecated": false,
+            "type": {
+              "kind": "primitive",
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Location",
+            "publicName": "Location",
+            "required": false,
+            "deprecated": false,
+            "type": {
+              "kind": "primitive",
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          {
+            "name": "X-Processing-Time",
+            "publicName": "X-Processing-Time",
+            "required": false,
+            "deprecated": false,
+            "type": {
+              "kind": "primitive",
+              "type": "integer"
+            }
+          }
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "CreateUserStatus400ResponseHeaders",
+      "source": "CreateUserStatus400ResponseHeaders",
+      "publicAliases": [],
+      "deprecated": false,
+      "type": {
+        "kind": "object",
+        "properties": [
+          {
+            "name": "X-Request-ID",
+            "publicName": "X-Request-ID",
+            "required": false,
+            "deprecated": false,
+            "type": {
+              "kind": "primitive",
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "CreateTokenResponseHeaders",
+      "source": "CreateTokenResponseHeaders",
+      "publicAliases": [],
+      "deprecated": false,
+      "type": {
+        "kind": "object",
+        "properties": [
+          {
+            "name": "X-Request-ID",
+            "publicName": "X-Request-ID",
+            "required": false,
+            "deprecated": false,
+            "type": {
+              "kind": "primitive",
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-RateLimit-Limit",
+            "publicName": "X-RateLimit-Limit",
+            "required": false,
+            "deprecated": false,
+            "type": {
+              "kind": "primitive",
+              "type": "integer"
+            }
+          },
+          {
+            "name": "X-RateLimit-Remaining",
+            "publicName": "X-RateLimit-Remaining",
+            "required": false,
+            "deprecated": false,
+            "type": {
+              "kind": "primitive",
+              "type": "integer"
+            }
+          },
+          {
+            "name": "X-RateLimit-Reset",
+            "publicName": "X-RateLimit-Reset",
+            "required": false,
+            "deprecated": false,
+            "type": {
+              "kind": "primitive",
+              "type": "integer"
+            }
+          }
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "CreateTokenStatus400ResponseHeaders",
+      "source": "CreateTokenStatus400ResponseHeaders",
+      "publicAliases": [],
+      "deprecated": false,
+      "type": {
+        "kind": "object",
+        "properties": [
+          {
+            "name": "X-Request-ID",
+            "publicName": "X-Request-ID",
+            "required": false,
+            "deprecated": false,
+            "type": {
+              "kind": "primitive",
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "CreateTokenStatus429ResponseHeaders",
+      "source": "CreateTokenStatus429ResponseHeaders",
+      "publicAliases": [],
+      "deprecated": false,
+      "type": {
+        "kind": "object",
+        "properties": [
+          {
+            "name": "X-Request-ID",
+            "publicName": "X-Request-ID",
+            "required": false,
+            "deprecated": false,
+            "type": {
+              "kind": "primitive",
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-RateLimit-Limit",
+            "publicName": "X-RateLimit-Limit",
+            "required": false,
+            "deprecated": false,
+            "type": {
+              "kind": "primitive",
+              "type": "integer"
+            }
+          },
+          {
+            "name": "X-RateLimit-Remaining",
+            "publicName": "X-RateLimit-Remaining",
+            "required": false,
+            "deprecated": false,
+            "type": {
+              "kind": "primitive",
+              "type": "integer"
+            }
+          },
+          {
+            "name": "X-RateLimit-Reset",
+            "publicName": "X-RateLimit-Reset",
+            "required": false,
+            "deprecated": false,
+            "type": {
+              "kind": "primitive",
+              "type": "integer"
+            }
+          },
+          {
+            "name": "Retry-After",
+            "publicName": "Retry-After",
+            "required": false,
+            "deprecated": false,
+            "type": {
+              "kind": "primitive",
+              "type": "integer"
+            }
+          }
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "ListMeResponseHeaders",
+      "source": "ListMeResponseHeaders",
+      "publicAliases": [],
+      "deprecated": false,
+      "type": {
+        "kind": "object",
+        "properties": [
+          {
+            "name": "X-Request-ID",
+            "publicName": "X-Request-ID",
+            "required": false,
+            "deprecated": false,
+            "type": {
+              "kind": "primitive",
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "ETag",
+            "publicName": "ETag",
+            "required": false,
+            "deprecated": false,
+            "type": {
+              "kind": "primitive",
+              "type": "string"
+            }
+          },
+          {
+            "name": "Last-Modified",
+            "publicName": "Last-Modified",
+            "required": false,
+            "deprecated": false,
+            "type": {
+              "kind": "primitive",
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "X-Cache-Control",
+            "publicName": "X-Cache-Control",
+            "required": false,
+            "deprecated": false,
+            "type": {
+              "kind": "primitive",
+              "type": "string"
+            }
+          }
+        ],
+        "additionalProperties": false
+      }
+    }
+  ],
+  "resources": [
+    "planets",
+    "celestialBodies",
+    "authentication"
+  ],
+  "publicResources": [
+    "planets",
+    "celestialBodies",
+    "authentication"
+  ],
+  "operations": [
+    {
+      "resource": "planets",
+      "publicResource": "planets",
+      "operation": "listAllData",
+      "publicOperation": "listAllData",
+      "deprecated": false,
+      "method": "GET",
+      "path": "/planets",
+      "pathParams": [],
+      "publicPathParams": [],
+      "queryParams": [
+        "limit",
+        "offset"
+      ],
+      "publicQueryParams": [
+        "limit",
+        "offset"
+      ],
+      "headerParams": [],
+      "publicHeaderParams": [],
+      "bodyParams": [],
+      "publicBodyParams": [],
+      "bodyParamDetails": [],
+      "pathParamDetails": [],
+      "queryParamDetails": [
+        {
+          "name": "limit",
+          "required": false,
+          "style": "form",
+          "explode": true,
+          "defaultValue": 10
+        },
+        {
+          "name": "offset",
+          "required": false,
+          "style": "form",
+          "explode": true,
+          "defaultValue": 0
+        }
+      ],
+      "headerParamDetails": [],
+      "cookieParams": [],
+      "publicCookieParams": [],
+      "cookieParamDetails": [],
+      "paramsModel": {
+        "publicName": "PlanetListAllDataParams"
+      },
+      "response": {
+        "status": "200",
+        "contentType": "application/json",
+        "encoding": "json",
+        "contents": [
+          {
+            "contentType": "application/json",
+            "encoding": "json"
+          },
+          {
+            "contentType": "application/xml",
+            "encoding": "binary"
+          }
+        ]
+      },
+      "responseModel": {
+        "name": "paginated_resource",
+        "publicAliases": []
+      },
+      "responseHeadersModel": {
+        "name": "ListAllDataResponseHeaders",
+        "publicAliases": []
+      },
+      "errorResponses": [],
+      "responseLinks": [],
+      "transport": "http"
+    },
+    {
+      "resource": "planets",
+      "publicResource": "planets",
+      "operation": "create",
+      "publicOperation": "create",
+      "deprecated": false,
+      "method": "POST",
+      "path": "/planets",
+      "pathParams": [],
+      "publicPathParams": [],
+      "queryParams": [],
+      "publicQueryParams": [],
+      "headerParams": [],
+      "publicHeaderParams": [],
+      "bodyParams": [
+        "id",
+        "name",
+        "description",
+        "type",
+        "habitabilityIndex",
+        "physicalProperties",
+        "atmosphere",
+        "discoveredAt",
+        "image",
+        "satellites",
+        "creator",
+        "tags",
+        "lastUpdated",
+        "successCallbackUrl",
+        "failureCallbackUrl"
+      ],
+      "publicBodyParams": [
+        "id",
+        "name",
+        "description",
+        "type",
+        "habitabilityIndex",
+        "physicalProperties",
+        "atmosphere",
+        "discoveredAt",
+        "image",
+        "satellites",
+        "creator",
+        "tags",
+        "lastUpdated",
+        "successCallbackUrl",
+        "failureCallbackUrl"
+      ],
+      "bodyParamDetails": [
+        {
+          "name": "id",
+          "required": true
+        },
+        {
+          "name": "name",
+          "required": true
+        },
+        {
+          "name": "description",
+          "required": false
+        },
+        {
+          "name": "type",
+          "required": false
+        },
+        {
+          "name": "habitabilityIndex",
+          "required": false
+        },
+        {
+          "name": "physicalProperties",
+          "required": false
+        },
+        {
+          "name": "atmosphere",
+          "required": false
+        },
+        {
+          "name": "discoveredAt",
+          "required": false
+        },
+        {
+          "name": "image",
+          "required": false
+        },
+        {
+          "name": "satellites",
+          "required": false
+        },
+        {
+          "name": "creator",
+          "required": false
+        },
+        {
+          "name": "tags",
+          "required": false
+        },
+        {
+          "name": "lastUpdated",
+          "required": false
+        },
+        {
+          "name": "successCallbackUrl",
+          "required": false
+        },
+        {
+          "name": "failureCallbackUrl",
+          "required": false
+        }
+      ],
+      "pathParamDetails": [],
+      "queryParamDetails": [],
+      "headerParamDetails": [],
+      "cookieParams": [],
+      "publicCookieParams": [],
+      "cookieParamDetails": [],
+      "paramsModel": {
+        "publicName": "PlanetCreateParams"
+      },
+      "requestBody": {
+        "contentType": "application/json",
+        "encoding": "json",
+        "contents": [
+          {
+            "contentType": "application/json",
+            "encoding": "json"
+          },
+          {
+            "contentType": "application/xml",
+            "encoding": "json"
+          }
+        ],
+        "required": false,
+        "publicName": "body",
+        "publicIdentifier": "body"
+      },
+      "response": {
+        "status": "201",
+        "contentType": "application/json",
+        "encoding": "json",
+        "contents": [
+          {
+            "contentType": "application/json",
+            "encoding": "json"
+          },
+          {
+            "contentType": "application/xml",
+            "encoding": "binary"
+          }
+        ]
+      },
+      "responseModel": {
+        "name": "planet",
+        "publicAliases": []
+      },
+      "responseHeadersModel": {
+        "name": "CreateResponseHeaders",
+        "publicAliases": []
+      },
+      "result": {
+        "successStatus": "201",
+        "errorStatuses": [
+          "400",
+          "403"
+        ]
+      },
+      "errorResponses": [
+        {
+          "status": "400",
+          "contentType": "application/json",
+          "encoding": "json",
+          "contents": [
+            {
+              "contentType": "application/json",
+              "encoding": "json"
+            },
+            {
+              "contentType": "application/xml",
+              "encoding": "binary"
+            }
+          ],
+          "headersModel": {
+            "name": "CreateStatus400ResponseHeaders",
+            "publicAliases": []
+          }
+        },
+        {
+          "status": "403",
+          "contentType": "application/json",
+          "encoding": "json",
+          "contents": [
+            {
+              "contentType": "application/json",
+              "encoding": "json"
+            },
+            {
+              "contentType": "application/xml",
+              "encoding": "binary"
+            }
+          ]
+        }
+      ],
+      "responseLinks": [],
+      "transport": "http"
+    },
+    {
+      "resource": "planets",
+      "publicResource": "planets",
+      "operation": "retrieve",
+      "publicOperation": "retrieve",
+      "deprecated": false,
+      "method": "GET",
+      "path": "/planets/{planetId}",
+      "pathParams": [
+        "planetId"
+      ],
+      "publicPathParams": [
+        "planetId"
+      ],
+      "queryParams": [],
+      "publicQueryParams": [],
+      "headerParams": [],
+      "publicHeaderParams": [],
+      "bodyParams": [],
+      "publicBodyParams": [],
+      "bodyParamDetails": [],
+      "pathParamDetails": [
+        {
+          "name": "planetId",
+          "required": true,
+          "style": "simple",
+          "explode": false
+        }
+      ],
+      "queryParamDetails": [],
+      "headerParamDetails": [],
+      "cookieParams": [],
+      "publicCookieParams": [],
+      "cookieParamDetails": [],
+      "paramsModel": {
+        "publicName": "PlanetRetrieveParams"
+      },
+      "response": {
+        "status": "200",
+        "contentType": "application/json",
+        "encoding": "json",
+        "contents": [
+          {
+            "contentType": "application/json",
+            "encoding": "json"
+          },
+          {
+            "contentType": "application/xml",
+            "encoding": "binary"
+          }
+        ]
+      },
+      "responseModel": {
+        "name": "planet",
+        "publicAliases": []
+      },
+      "responseHeadersModel": {
+        "name": "RetrieveResponseHeaders",
+        "publicAliases": []
+      },
+      "result": {
+        "successStatus": "200",
+        "errorStatuses": [
+          "404"
+        ]
+      },
+      "errorResponses": [
+        {
+          "status": "404",
+          "contentType": "application/json",
+          "encoding": "json",
+          "contents": [
+            {
+              "contentType": "application/json",
+              "encoding": "json"
+            },
+            {
+              "contentType": "application/xml",
+              "encoding": "binary"
+            }
+          ]
+        }
+      ],
+      "responseLinks": [],
+      "transport": "http"
+    },
+    {
+      "resource": "planets",
+      "publicResource": "planets",
+      "operation": "update",
+      "publicOperation": "update",
+      "deprecated": false,
+      "method": "PUT",
+      "path": "/planets/{planetId}",
+      "pathParams": [
+        "planetId"
+      ],
+      "publicPathParams": [
+        "planetId"
+      ],
+      "queryParams": [],
+      "publicQueryParams": [],
+      "headerParams": [],
+      "publicHeaderParams": [],
+      "bodyParams": [
+        "id",
+        "name",
+        "description",
+        "type",
+        "habitabilityIndex",
+        "physicalProperties",
+        "atmosphere",
+        "discoveredAt",
+        "image",
+        "satellites",
+        "creator",
+        "tags",
+        "lastUpdated",
+        "successCallbackUrl",
+        "failureCallbackUrl"
+      ],
+      "publicBodyParams": [
+        "id",
+        "name",
+        "description",
+        "type",
+        "habitabilityIndex",
+        "physicalProperties",
+        "atmosphere",
+        "discoveredAt",
+        "image",
+        "satellites",
+        "creator",
+        "tags",
+        "lastUpdated",
+        "successCallbackUrl",
+        "failureCallbackUrl"
+      ],
+      "bodyParamDetails": [
+        {
+          "name": "id",
+          "required": true
+        },
+        {
+          "name": "name",
+          "required": true
+        },
+        {
+          "name": "description",
+          "required": false
+        },
+        {
+          "name": "type",
+          "required": false
+        },
+        {
+          "name": "habitabilityIndex",
+          "required": false
+        },
+        {
+          "name": "physicalProperties",
+          "required": false
+        },
+        {
+          "name": "atmosphere",
+          "required": false
+        },
+        {
+          "name": "discoveredAt",
+          "required": false
+        },
+        {
+          "name": "image",
+          "required": false
+        },
+        {
+          "name": "satellites",
+          "required": false
+        },
+        {
+          "name": "creator",
+          "required": false
+        },
+        {
+          "name": "tags",
+          "required": false
+        },
+        {
+          "name": "lastUpdated",
+          "required": false
+        },
+        {
+          "name": "successCallbackUrl",
+          "required": false
+        },
+        {
+          "name": "failureCallbackUrl",
+          "required": false
+        }
+      ],
+      "pathParamDetails": [
+        {
+          "name": "planetId",
+          "required": true,
+          "style": "simple",
+          "explode": false
+        }
+      ],
+      "queryParamDetails": [],
+      "headerParamDetails": [],
+      "cookieParams": [],
+      "publicCookieParams": [],
+      "cookieParamDetails": [],
+      "paramsModel": {
+        "publicName": "PlanetUpdateParams"
+      },
+      "requestBody": {
+        "contentType": "application/json",
+        "encoding": "json",
+        "contents": [
+          {
+            "contentType": "application/json",
+            "encoding": "json"
+          },
+          {
+            "contentType": "application/xml",
+            "encoding": "json"
+          }
+        ],
+        "required": false,
+        "publicName": "body",
+        "publicIdentifier": "body"
+      },
+      "response": {
+        "status": "200",
+        "contentType": "application/json",
+        "encoding": "json",
+        "contents": [
+          {
+            "contentType": "application/json",
+            "encoding": "json"
+          },
+          {
+            "contentType": "application/xml",
+            "encoding": "binary"
+          }
+        ]
+      },
+      "responseModel": {
+        "name": "planet",
+        "publicAliases": []
+      },
+      "result": {
+        "successStatus": "200",
+        "errorStatuses": [
+          "400",
+          "403",
+          "404"
+        ]
+      },
+      "errorResponses": [
+        {
+          "status": "400",
+          "contentType": "application/json",
+          "encoding": "json",
+          "contents": [
+            {
+              "contentType": "application/json",
+              "encoding": "json"
+            },
+            {
+              "contentType": "application/xml",
+              "encoding": "binary"
+            }
+          ],
+          "headersModel": {
+            "name": "UpdateStatus400ResponseHeaders",
+            "publicAliases": []
+          }
+        },
+        {
+          "status": "403",
+          "contentType": "application/json",
+          "encoding": "json",
+          "contents": [
+            {
+              "contentType": "application/json",
+              "encoding": "json"
+            },
+            {
+              "contentType": "application/xml",
+              "encoding": "binary"
+            }
+          ]
+        },
+        {
+          "status": "404",
+          "contentType": "application/json",
+          "encoding": "json",
+          "contents": [
+            {
+              "contentType": "application/json",
+              "encoding": "json"
+            },
+            {
+              "contentType": "application/xml",
+              "encoding": "binary"
+            }
+          ]
+        }
+      ],
+      "responseLinks": [],
+      "transport": "http"
+    },
+    {
+      "resource": "planets",
+      "publicResource": "planets",
+      "operation": "delete",
+      "publicOperation": "delete",
+      "deprecated": false,
+      "method": "DELETE",
+      "path": "/planets/{planetId}",
+      "pathParams": [
+        "planetId"
+      ],
+      "publicPathParams": [
+        "planetId"
+      ],
+      "queryParams": [],
+      "publicQueryParams": [],
+      "headerParams": [],
+      "publicHeaderParams": [],
+      "bodyParams": [],
+      "publicBodyParams": [],
+      "bodyParamDetails": [],
+      "pathParamDetails": [
+        {
+          "name": "planetId",
+          "required": true,
+          "style": "simple",
+          "explode": false
+        }
+      ],
+      "queryParamDetails": [],
+      "headerParamDetails": [],
+      "cookieParams": [],
+      "publicCookieParams": [],
+      "cookieParamDetails": [],
+      "paramsModel": {
+        "publicName": "PlanetDeleteParams"
+      },
+      "result": {
+        "successStatus": "204",
+        "errorStatuses": [
+          "404"
+        ]
+      },
+      "errorResponses": [
+        {
+          "status": "404",
+          "contentType": "application/json",
+          "encoding": "json",
+          "contents": [
+            {
+              "contentType": "application/json",
+              "encoding": "json"
+            },
+            {
+              "contentType": "application/xml",
+              "encoding": "binary"
+            }
+          ]
+        }
+      ],
+      "responseLinks": [],
+      "transport": "http"
+    },
+    {
+      "resource": "planets",
+      "publicResource": "planets",
+      "operation": "uploadImage",
+      "publicOperation": "uploadImage",
+      "deprecated": false,
+      "method": "POST",
+      "path": "/planets/{planetId}/image",
+      "pathParams": [
+        "planetId"
+      ],
+      "publicPathParams": [
+        "planetId"
+      ],
+      "queryParams": [],
+      "publicQueryParams": [],
+      "headerParams": [],
+      "publicHeaderParams": [],
+      "bodyParams": [
+        "image"
+      ],
+      "publicBodyParams": [
+        "image"
+      ],
+      "bodyParamDetails": [
+        {
+          "name": "image",
+          "required": false
+        }
+      ],
+      "pathParamDetails": [
+        {
+          "name": "planetId",
+          "required": true,
+          "style": "simple",
+          "explode": false
+        }
+      ],
+      "queryParamDetails": [],
+      "headerParamDetails": [],
+      "cookieParams": [],
+      "publicCookieParams": [],
+      "cookieParamDetails": [],
+      "paramsModel": {
+        "publicName": "PlanetUploadImageParams"
+      },
+      "requestBody": {
+        "contentType": "multipart/form-data",
+        "encoding": "multipart",
+        "contents": [
+          {
+            "contentType": "multipart/form-data",
+            "encoding": "multipart"
+          }
+        ],
+        "required": false,
+        "publicName": "body",
+        "publicIdentifier": "body"
+      },
+      "response": {
+        "status": "200",
+        "contentType": "application/json",
+        "encoding": "json",
+        "contents": [
+          {
+            "contentType": "application/json",
+            "encoding": "json"
+          },
+          {
+            "contentType": "application/xml",
+            "encoding": "binary"
+          }
+        ]
+      },
+      "responseHeadersModel": {
+        "name": "UploadImageResponseHeaders",
+        "publicAliases": []
+      },
+      "result": {
+        "successStatus": "200",
+        "errorStatuses": [
+          "400",
+          "403",
+          "404"
+        ]
+      },
+      "errorResponses": [
+        {
+          "status": "400",
+          "contentType": "application/json",
+          "encoding": "json",
+          "contents": [
+            {
+              "contentType": "application/json",
+              "encoding": "json"
+            },
+            {
+              "contentType": "application/xml",
+              "encoding": "binary"
+            }
+          ],
+          "headersModel": {
+            "name": "UploadImageStatus400ResponseHeaders",
+            "publicAliases": []
+          }
+        },
+        {
+          "status": "403",
+          "contentType": "application/json",
+          "encoding": "json",
+          "contents": [
+            {
+              "contentType": "application/json",
+              "encoding": "json"
+            },
+            {
+              "contentType": "application/xml",
+              "encoding": "binary"
+            }
+          ]
+        },
+        {
+          "status": "404",
+          "contentType": "application/json",
+          "encoding": "json",
+          "contents": [
+            {
+              "contentType": "application/json",
+              "encoding": "json"
+            },
+            {
+              "contentType": "application/xml",
+              "encoding": "binary"
+            }
+          ]
+        }
+      ],
+      "responseLinks": [],
+      "transport": "http"
+    },
+    {
+      "resource": "celestialBodies",
+      "publicResource": "celestialBodies",
+      "operation": "create",
+      "publicOperation": "create",
+      "deprecated": false,
+      "method": "POST",
+      "path": "/celestial-bodies",
+      "pathParams": [],
+      "publicPathParams": [],
+      "queryParams": [],
+      "publicQueryParams": [],
+      "headerParams": [],
+      "publicHeaderParams": [],
+      "bodyParams": [
+        "body"
+      ],
+      "publicBodyParams": [
+        "body"
+      ],
+      "bodyParamDetails": [
+        {
+          "name": "body",
+          "required": true
+        }
+      ],
+      "pathParamDetails": [],
+      "queryParamDetails": [],
+      "headerParamDetails": [],
+      "cookieParams": [],
+      "publicCookieParams": [],
+      "cookieParamDetails": [],
+      "paramsModel": {
+        "publicName": "CelestialBodyCreateParams"
+      },
+      "requestBody": {
+        "contentType": "application/json",
+        "encoding": "json",
+        "contents": [
+          {
+            "contentType": "application/json",
+            "encoding": "json"
+          }
+        ],
+        "required": true,
+        "publicName": "body",
+        "publicIdentifier": "body"
+      },
+      "response": {
+        "status": "201",
+        "contentType": "application/json",
+        "encoding": "json",
+        "contents": [
+          {
+            "contentType": "application/json",
+            "encoding": "json"
+          }
+        ]
+      },
+      "responseModel": {
+        "name": "celestial_body",
+        "publicAliases": []
+      },
+      "errorResponses": [],
+      "responseLinks": [],
+      "transport": "http"
+    },
+    {
+      "resource": "authentication",
+      "publicResource": "authentication",
+      "operation": "createUser",
+      "publicOperation": "createUser",
+      "deprecated": false,
+      "method": "POST",
+      "path": "/user/signup",
+      "pathParams": [],
+      "publicPathParams": [],
+      "queryParams": [],
+      "publicQueryParams": [],
+      "headerParams": [],
+      "publicHeaderParams": [],
+      "bodyParams": [
+        "id",
+        "name",
+        "email",
+        "password"
+      ],
+      "publicBodyParams": [
+        "id",
+        "name",
+        "email",
+        "password"
+      ],
+      "bodyParamDetails": [
+        {
+          "name": "id",
+          "required": false
+        },
+        {
+          "name": "name",
+          "required": false
+        },
+        {
+          "name": "email",
+          "required": true
+        },
+        {
+          "name": "password",
+          "required": true
+        }
+      ],
+      "pathParamDetails": [],
+      "queryParamDetails": [],
+      "headerParamDetails": [],
+      "cookieParams": [],
+      "publicCookieParams": [],
+      "cookieParamDetails": [],
+      "paramsModel": {
+        "publicName": "AuthenticationCreateUserParams"
+      },
+      "requestBody": {
+        "contentType": "application/json",
+        "encoding": "json",
+        "contents": [
+          {
+            "contentType": "application/json",
+            "encoding": "json"
+          },
+          {
+            "contentType": "application/xml",
+            "encoding": "json"
+          }
+        ],
+        "required": false,
+        "publicName": "body",
+        "publicIdentifier": "body"
+      },
+      "response": {
+        "status": "201",
+        "contentType": "application/json",
+        "encoding": "json",
+        "contents": [
+          {
+            "contentType": "application/json",
+            "encoding": "json"
+          },
+          {
+            "contentType": "application/xml",
+            "encoding": "binary"
+          }
+        ]
+      },
+      "responseModel": {
+        "name": "user",
+        "publicAliases": []
+      },
+      "responseHeadersModel": {
+        "name": "CreateUserResponseHeaders",
+        "publicAliases": []
+      },
+      "result": {
+        "successStatus": "201",
+        "errorStatuses": [
+          "400",
+          "401",
+          "403",
+          "409",
+          "422"
+        ]
+      },
+      "errorResponses": [
+        {
+          "status": "400",
+          "contentType": "application/json",
+          "encoding": "json",
+          "contents": [
+            {
+              "contentType": "application/json",
+              "encoding": "json"
+            },
+            {
+              "contentType": "application/xml",
+              "encoding": "binary"
+            }
+          ],
+          "headersModel": {
+            "name": "CreateUserStatus400ResponseHeaders",
+            "publicAliases": []
+          }
+        },
+        {
+          "status": "401",
+          "contentType": "application/json",
+          "encoding": "json",
+          "contents": [
+            {
+              "contentType": "application/json",
+              "encoding": "json"
+            },
+            {
+              "contentType": "application/xml",
+              "encoding": "binary"
+            }
+          ]
+        },
+        {
+          "status": "403",
+          "contentType": "application/json",
+          "encoding": "json",
+          "contents": [
+            {
+              "contentType": "application/json",
+              "encoding": "json"
+            },
+            {
+              "contentType": "application/xml",
+              "encoding": "binary"
+            }
+          ]
+        },
+        {
+          "status": "409",
+          "contentType": "application/json",
+          "encoding": "json",
+          "contents": [
+            {
+              "contentType": "application/json",
+              "encoding": "json"
+            },
+            {
+              "contentType": "application/xml",
+              "encoding": "binary"
+            }
+          ]
+        },
+        {
+          "status": "422",
+          "contentType": "application/json",
+          "encoding": "json",
+          "contents": [
+            {
+              "contentType": "application/json",
+              "encoding": "json"
+            },
+            {
+              "contentType": "application/xml",
+              "encoding": "binary"
+            }
+          ]
+        }
+      ],
+      "responseLinks": [],
+      "transport": "http"
+    },
+    {
+      "resource": "authentication",
+      "publicResource": "authentication",
+      "operation": "createToken",
+      "publicOperation": "createToken",
+      "deprecated": false,
+      "method": "POST",
+      "path": "/auth/token",
+      "pathParams": [],
+      "publicPathParams": [],
+      "queryParams": [],
+      "publicQueryParams": [],
+      "headerParams": [],
+      "publicHeaderParams": [],
+      "bodyParams": [
+        "email",
+        "password"
+      ],
+      "publicBodyParams": [
+        "email",
+        "password"
+      ],
+      "bodyParamDetails": [
+        {
+          "name": "email",
+          "required": true
+        },
+        {
+          "name": "password",
+          "required": true
+        }
+      ],
+      "pathParamDetails": [],
+      "queryParamDetails": [],
+      "headerParamDetails": [],
+      "cookieParams": [],
+      "publicCookieParams": [],
+      "cookieParamDetails": [],
+      "paramsModel": {
+        "publicName": "AuthenticationCreateTokenParams"
+      },
+      "requestBody": {
+        "contentType": "application/json",
+        "encoding": "json",
+        "contents": [
+          {
+            "contentType": "application/json",
+            "encoding": "json"
+          },
+          {
+            "contentType": "application/xml",
+            "encoding": "json"
+          }
+        ],
+        "required": false,
+        "publicName": "body",
+        "publicIdentifier": "body"
+      },
+      "response": {
+        "status": "201",
+        "contentType": "application/json",
+        "encoding": "json",
+        "contents": [
+          {
+            "contentType": "application/json",
+            "encoding": "json"
+          },
+          {
+            "contentType": "application/xml",
+            "encoding": "binary"
+          }
+        ]
+      },
+      "responseModel": {
+        "name": "token",
+        "publicAliases": []
+      },
+      "responseHeadersModel": {
+        "name": "CreateTokenResponseHeaders",
+        "publicAliases": []
+      },
+      "result": {
+        "successStatus": "201",
+        "errorStatuses": [
+          "400",
+          "401",
+          "403",
+          "429"
+        ]
+      },
+      "errorResponses": [
+        {
+          "status": "400",
+          "contentType": "application/json",
+          "encoding": "json",
+          "contents": [
+            {
+              "contentType": "application/json",
+              "encoding": "json"
+            },
+            {
+              "contentType": "application/xml",
+              "encoding": "binary"
+            }
+          ],
+          "headersModel": {
+            "name": "CreateTokenStatus400ResponseHeaders",
+            "publicAliases": []
+          }
+        },
+        {
+          "status": "401",
+          "contentType": "application/json",
+          "encoding": "json",
+          "contents": [
+            {
+              "contentType": "application/json",
+              "encoding": "json"
+            },
+            {
+              "contentType": "application/xml",
+              "encoding": "binary"
+            }
+          ]
+        },
+        {
+          "status": "403",
+          "contentType": "application/json",
+          "encoding": "json",
+          "contents": [
+            {
+              "contentType": "application/json",
+              "encoding": "json"
+            },
+            {
+              "contentType": "application/xml",
+              "encoding": "binary"
+            }
+          ]
+        },
+        {
+          "status": "429",
+          "contentType": "application/json",
+          "encoding": "json",
+          "contents": [
+            {
+              "contentType": "application/json",
+              "encoding": "json"
+            },
+            {
+              "contentType": "application/xml",
+              "encoding": "binary"
+            }
+          ],
+          "headersModel": {
+            "name": "CreateTokenStatus429ResponseHeaders",
+            "publicAliases": []
+          }
+        }
+      ],
+      "responseLinks": [],
+      "transport": "http"
+    },
+    {
+      "resource": "authentication",
+      "publicResource": "authentication",
+      "operation": "listMe",
+      "publicOperation": "listMe",
+      "deprecated": false,
+      "method": "GET",
+      "path": "/me",
+      "pathParams": [],
+      "publicPathParams": [],
+      "queryParams": [],
+      "publicQueryParams": [],
+      "headerParams": [],
+      "publicHeaderParams": [],
+      "bodyParams": [],
+      "publicBodyParams": [],
+      "bodyParamDetails": [],
+      "pathParamDetails": [],
+      "queryParamDetails": [],
+      "headerParamDetails": [],
+      "cookieParams": [],
+      "publicCookieParams": [],
+      "cookieParamDetails": [],
+      "response": {
+        "status": "200",
+        "contentType": "application/json",
+        "encoding": "json",
+        "contents": [
+          {
+            "contentType": "application/json",
+            "encoding": "json"
+          },
+          {
+            "contentType": "application/xml",
+            "encoding": "binary"
+          }
+        ]
+      },
+      "responseModel": {
+        "name": "user",
+        "publicAliases": []
+      },
+      "responseHeadersModel": {
+        "name": "ListMeResponseHeaders",
+        "publicAliases": []
+      },
+      "result": {
+        "successStatus": "200",
+        "errorStatuses": [
+          "401",
+          "403"
+        ]
+      },
+      "errorResponses": [
+        {
+          "status": "401",
+          "contentType": "application/json",
+          "encoding": "json",
+          "contents": [
+            {
+              "contentType": "application/json",
+              "encoding": "json"
+            },
+            {
+              "contentType": "application/xml",
+              "encoding": "binary"
+            }
+          ]
+        },
+        {
+          "status": "403",
+          "contentType": "application/json",
+          "encoding": "json",
+          "contents": [
+            {
+              "contentType": "application/json",
+              "encoding": "json"
+            },
+            {
+              "contentType": "application/xml",
+              "encoding": "binary"
+            }
+          ]
+        }
+      ],
+      "responseLinks": [],
+      "transport": "http"
+    }
+  ],
+  "webhooks": [
+    {
+      "event": "newPlanet",
+      "name": "Unwrap",
+      "source": "webhook",
+      "method": "POST",
+      "path": "newPlanet",
+      "payloadModel": {
+        "name": "planet",
+        "publicAliases": []
+      }
+    },
+    {
+      "event": "{$request.body#/successCallbackUrl}",
+      "name": "RequestBodySuccessCallbackUrl",
+      "source": "callback",
+      "method": "POST",
+      "path": "POST /planets -> {$request.body#/successCallbackUrl}",
+      "payloadModel": {
+        "name": "planet",
+        "publicAliases": []
+      }
+    },
+    {
+      "event": "{$request.body#/failureCallbackUrl}",
+      "name": "RequestBodyFailureCallbackUrl",
+      "source": "callback",
+      "method": "POST",
+      "path": "POST /planets -> {$request.body#/failureCallbackUrl}",
+      "payloadModel": {
+        "name": "planet",
+        "publicAliases": []
+      }
+    },
+    {
+      "event": "{$request.body#/successCallbackUrl}",
+      "name": "RequestBodySuccessCallbackUrl",
+      "source": "callback",
+      "method": "POST",
+      "path": "POST /planets -> {$request.body#/successCallbackUrl}",
+      "payloadModel": {
+        "name": "planet",
+        "publicAliases": []
+      }
+    }
+  ]
+}

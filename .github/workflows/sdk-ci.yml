@@ -1,0 +1,88 @@
+name: Rust SDK CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  # Lint gate: formatting plus clippy with warnings denied, over every target
+  # and feature — the same bar the generator holds its own baselines to, so a
+  # generated-code lint regression fails here instead of in a consumer's tree.
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+      - run: cargo fmt --check
+      - run: cargo clippy --all-targets --all-features -- -D warnings
+
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
+        with:
+          toolchain: stable
+      - run: cargo build --all-features
+
+  # Runs the generated mock round-trips, the in-crate unit tests, and every
+  # doctest. `--all-features` is load-bearing rather than cosmetic: the mock
+  # tests declare `required-features = ["mock", "tokio"]` so a bare `cargo test`
+  # would silently skip them, and the feature-gated surfaces (multipart,
+  # websocket) only compile — and only have their doctests collected — with
+  # their features on.
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
+        with:
+          toolchain: stable
+      - run: cargo test --all-features
+
+  # Proves the BYO-transport story: the library must compile with reqwest
+  # absent from the tree, and the hyper example (via --all-targets) must build
+  # against that reqwest-free surface.
+  no-default-features:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
+        with:
+          toolchain: stable
+      - run: cargo check --no-default-features
+      - run: cargo check --no-default-features --features tokio --all-targets
+
+  # Proves the MSRV floor declared as `rust-version` in Cargo.toml is real.
+  # `--locked` is the whole point: it forbids re-resolving, so the check runs
+  # against the exact versions the committed Cargo.lock pins. Without it a
+  # fresh resolve can pull a newer transitive dependency that raised its own
+  # floor, and the job would fail for a reason this crate never chose. The
+  # bootstrap line keeps the job green in a repo that has not committed a
+  # lockfile yet (the generator cannot emit one — it does not resolve
+  # dependencies); once Cargo.lock is committed the `test -f` short-circuits.
+  msrv:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
+        with:
+          toolchain: 1.85.0
+      - run: test -f Cargo.lock || cargo generate-lockfile
+      - run: cargo check --locked --all-targets --all-features
+
+  # Dependency audit against `deny.toml`: RustSec advisories (vulnerable,
+  # unmaintained, unsound, yanked) and the license allow-list. Scoped to those
+  # two checks because they are the two `deny.toml` configures; `bans` and
+  # `sources` are left to the consumer to opt into.
+  deny:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2.1.1
+        with:
+          command: check
+          command-arguments: advisories licenses
