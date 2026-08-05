@@ -25,6 +25,10 @@
       {
         "lang": "Go",
         "description": "```sh\ngo get scalar-galaxy\n```"
+      },
+      {
+        "lang": "Rust",
+        "description": "```sh\ncargo add scalar-galaxy\n```"
       }
     ]
   },
@@ -173,22 +177,22 @@
           {
             "lang": "TypeScript",
             "label": "TypeScript",
-            "source": "import Galaxy from \"@scalar/galaxy\";\n\nconst client = new Galaxy({\n  bearerAuth: process.env[\"BEARER_AUTH\"], // defaults to the BEARER_AUTH env var\n  environment: \"production\",\n});\n\nconst listAllData = await client.planets.listAllData({\n  limit: 10,\n  offset: 0,\n});\nconsole.log(listAllData);"
+            "source": "import Galaxy from \"@scalar/galaxy\";\n\nconst client = new Galaxy({\n  bearerAuth: process.env[\"BEARER_AUTH\"], // defaults to the BEARER_AUTH env var\n  environment: \"production\",\n});\n\nconst listAllData = await client.planets.listAllData({\n  limit: 10,\n  offset: 0,\n});\n\nconsole.log(listAllData);"
           },
           {
             "lang": "Python",
             "label": "Python",
-            "source": "import os\n\nfrom scalar_galaxy import Galaxy\n\nclient = Galaxy(\n    bearer_auth=os.environ.get(\"BEARER_AUTH\"),\n)\n\nplanet = client.planets.list_all_data(\n    limit=10,\n    offset=0,\n)\nprint(planet)"
+            "source": "import os\n\nfrom scalar_galaxy import Galaxy\n\nclient = Galaxy(\n    bearer_auth=os.environ.get(\"BEARER_AUTH\"),\n)\n\nplanet = client.planets.list_all_data(\n    limit=10,\n    offset=0,\n)\n\nprint(planet)"
           },
           {
             "lang": "Go",
             "label": "Go",
-            "source": "package main\n\nimport (\n\t\"context\"\n\t\"fmt\"\n\t\"os\"\n\n\tsdk \"scalar-galaxy\"\n\t\"scalar-galaxy/option\"\n)\n\nfunc main() {\n\tclient := sdk.NewClient(\n\t\toption.WithBearerAuth(os.Getenv(\"BEARER_AUTH\")),\n\t)\n\n\tplanet, err := client.Planets.ListAllData(context.Background(), sdk.PlanetListAllDataParams{\n\t\tLimit: sdk.F[int64](10),\n\t\tOffset: sdk.F[int64](0),\n\t})\n\tif err != nil {\n\t\tpanic(err)\n\t}\n\tfmt.Println(planet)\n}"
+            "source": "package main\n\nimport (\n\t\"context\"\n\t\"fmt\"\n\t\"os\"\n\n\tsdk \"scalar-galaxy\"\n\t\"scalar-galaxy/option\"\n)\n\nfunc main() {\n\tclient := sdk.NewClient(\n\t\toption.WithBearerAuth(os.Getenv(\"BEARER_AUTH\")),\n\t)\n\n\tplanet, err := client.Planets.ListAllData(context.Background(), sdk.PlanetListAllDataParams{\n\t\tLimit: sdk.F[int64](10),\n\t\tOffset: sdk.F[int64](0),\n\t})\n\tif err != nil {\n\t\tpanic(err)\n\t}\n\n\tfmt.Println(planet)\n}"
           },
           {
             "lang": "rust",
             "label": "Rust",
-            "source": "use scalar_galaxy::*;\n\nasync fn run() -> Result<(), Box<dyn std::error::Error>> {\n    let client = Galaxy::from_env()?;\n    let _ = client.planets().list_all_data().send().await?;\n    Ok(())\n}"
+            "source": "use scalar_galaxy::*;\n\n#[tokio::main]\nasync fn main() -> Result<(), Box<dyn std::error::Error>> {\n    let client = Galaxy::builder()\n        .bearer_token(std::env::var(\"SCALAR_BEARER_TOKEN\")?)\n        .build()?;\n\n    let response = client.planets().list_all_data().send().await?;\n\n    println!(\"{:?}\", response);\n\n    Ok(())\n}"
           }
         ]
       },
@@ -324,22 +328,22 @@
           {
             "lang": "TypeScript",
             "label": "TypeScript",
-            "source": "import Galaxy from \"@scalar/galaxy\";\n\nconst client = new Galaxy({\n  bearerAuth: process.env[\"BEARER_AUTH\"], // defaults to the BEARER_AUTH env var\n  environment: \"production\",\n});\n\nconst planet = await client.planets.create();\nconsole.log(planet);"
+            "source": "import Galaxy from \"@scalar/galaxy\";\n\nconst client = new Galaxy({\n  bearerAuth: process.env[\"BEARER_AUTH\"], // defaults to the BEARER_AUTH env var\n  environment: \"production\",\n});\n\nconst planet = await client.planets.create();\n\nconsole.log(planet);"
           },
           {
             "lang": "Python",
             "label": "Python",
-            "source": "import os\n\nfrom scalar_galaxy import Galaxy\n\nclient = Galaxy(\n    bearer_auth=os.environ.get(\"BEARER_AUTH\"),\n)\n\nplanet = client.planets.create(\n    name=\"Mars\",\n)\nprint(planet)"
+            "source": "import os\n\nfrom scalar_galaxy import Galaxy\n\nclient = Galaxy(\n    bearer_auth=os.environ.get(\"BEARER_AUTH\"),\n)\n\nplanet = client.planets.create(\n    name=\"Mars\",\n)\n\nprint(planet)"
           },
           {
             "lang": "Go",
             "label": "Go",
-            "source": "package main\n\nimport (\n\t\"context\"\n\t\"fmt\"\n\t\"os\"\n\n\tsdk \"scalar-galaxy\"\n\t\"scalar-galaxy/option\"\n)\n\nfunc main() {\n\tclient := sdk.NewClient(\n\t\toption.WithBearerAuth(os.Getenv(\"BEARER_AUTH\")),\n\t)\n\n\tplanet, err := client.Planets.New(context.Background(), sdk.PlanetNewParams{\n\t\tPlanet: sdk.PlanetParam{\n\t\tName: sdk.F[string](\"Mars\"),\n\t},\n\t})\n\tif err != nil {\n\t\tpanic(err)\n\t}\n\tfmt.Println(planet)\n}"
+            "source": "package main\n\nimport (\n\t\"context\"\n\t\"fmt\"\n\t\"os\"\n\n\tsdk \"scalar-galaxy\"\n\t\"scalar-galaxy/option\"\n)\n\nfunc main() {\n\tclient := sdk.NewClient(\n\t\toption.WithBearerAuth(os.Getenv(\"BEARER_AUTH\")),\n\t)\n\n\tplanet, err := client.Planets.New(context.Background(), sdk.PlanetNewParams{\n\t\tPlanet: sdk.PlanetParam{\n\t\tName: sdk.F[string](\"Mars\"),\n\t},\n\t})\n\tif err != nil {\n\t\tpanic(err)\n\t}\n\n\tfmt.Println(planet)\n}"
           },
           {
             "lang": "rust",
             "label": "Rust",
-            "source": "use scalar_galaxy::*;\n\nasync fn run() -> Result<(), Box<dyn std::error::Error>> {\n    let client = Galaxy::from_env()?;\n    let _ = client.planets().create().send().await?;\n    Ok(())\n}"
+            "source": "use scalar_galaxy::*;\n\n#[tokio::main]\nasync fn main() -> Result<(), Box<dyn std::error::Error>> {\n    let client = Galaxy::builder()\n        .bearer_token(std::env::var(\"SCALAR_BEARER_TOKEN\")?)\n        .build()?;\n\n    let response = client.planets().create().send().await?;\n\n    println!(\"{:?}\", response);\n\n    Ok(())\n}"
           }
         ]
       }
@@ -397,22 +401,22 @@
           {
             "lang": "TypeScript",
             "label": "TypeScript",
-            "source": "import Galaxy from \"@scalar/galaxy\";\n\nconst client = new Galaxy({\n  bearerAuth: process.env[\"BEARER_AUTH\"], // defaults to the BEARER_AUTH env var\n  environment: \"production\",\n});\n\nconst planet = await client.planets.retrieve(1);\nconsole.log(planet);"
+            "source": "import Galaxy from \"@scalar/galaxy\";\n\nconst client = new Galaxy({\n  bearerAuth: process.env[\"BEARER_AUTH\"], // defaults to the BEARER_AUTH env var\n  environment: \"production\",\n});\n\nconst planet = await client.planets.retrieve(1);\n\nconsole.log(planet);"
           },
           {
             "lang": "Python",
             "label": "Python",
-            "source": "import os\n\nfrom scalar_galaxy import Galaxy\n\nclient = Galaxy(\n    bearer_auth=os.environ.get(\"BEARER_AUTH\"),\n)\n\nplanet = client.planets.retrieve(\n    planet_id=1,\n)\nprint(planet)"
+            "source": "import os\n\nfrom scalar_galaxy import Galaxy\n\nclient = Galaxy(\n    bearer_auth=os.environ.get(\"BEARER_AUTH\"),\n)\n\nplanet = client.planets.retrieve(\n    planet_id=1,\n)\n\nprint(planet)"
           },
           {
             "lang": "Go",
             "label": "Go",
-            "source": "package main\n\nimport (\n\t\"context\"\n\t\"fmt\"\n\t\"os\"\n\n\tsdk \"scalar-galaxy\"\n\t\"scalar-galaxy/option\"\n)\n\nfunc main() {\n\tclient := sdk.NewClient(\n\t\toption.WithBearerAuth(os.Getenv(\"BEARER_AUTH\")),\n\t)\n\n\tplanet, err := client.Planets.Get(context.Background(), 1)\n\tif err != nil {\n\t\tpanic(err)\n\t}\n\tfmt.Println(planet)\n}"
+            "source": "package main\n\nimport (\n\t\"context\"\n\t\"fmt\"\n\t\"os\"\n\n\tsdk \"scalar-galaxy\"\n\t\"scalar-galaxy/option\"\n)\n\nfunc main() {\n\tclient := sdk.NewClient(\n\t\toption.WithBearerAuth(os.Getenv(\"BEARER_AUTH\")),\n\t)\n\n\tplanet, err := client.Planets.Get(context.Background(), 1)\n\tif err != nil {\n\t\tpanic(err)\n\t}\n\n\tfmt.Println(planet)\n}"
           },
           {
             "lang": "rust",
             "label": "Rust",
-            "source": "use scalar_galaxy::*;\n\nasync fn run() -> Result<(), Box<dyn std::error::Error>> {\n    let client = Galaxy::from_env()?;\n    let _ = client.planets().retrieve(1).send().await?;\n    Ok(())\n}"
+            "source": "use scalar_galaxy::*;\n\n#[tokio::main]\nasync fn main() -> Result<(), Box<dyn std::error::Error>> {\n    let client = Galaxy::builder()\n        .bearer_token(std::env::var(\"SCALAR_BEARER_TOKEN\")?)\n        .build()?;\n\n    let response = client.planets().retrieve(1).send().await?;\n\n    println!(\"{:?}\", response);\n\n    Ok(())\n}"
           }
         ]
       },
@@ -474,22 +478,22 @@
           {
             "lang": "TypeScript",
             "label": "TypeScript",
-            "source": "import Galaxy from \"@scalar/galaxy\";\n\nconst client = new Galaxy({\n  bearerAuth: process.env[\"BEARER_AUTH\"], // defaults to the BEARER_AUTH env var\n  environment: \"production\",\n});\n\nconst planet = await client.planets.update(1);\nconsole.log(planet);"
+            "source": "import Galaxy from \"@scalar/galaxy\";\n\nconst client = new Galaxy({\n  bearerAuth: process.env[\"BEARER_AUTH\"], // defaults to the BEARER_AUTH env var\n  environment: \"production\",\n});\n\nconst planet = await client.planets.update(1);\n\nconsole.log(planet);"
           },
           {
             "lang": "Python",
             "label": "Python",
-            "source": "import os\n\nfrom scalar_galaxy import Galaxy\n\nclient = Galaxy(\n    bearer_auth=os.environ.get(\"BEARER_AUTH\"),\n)\n\nplanet = client.planets.update(\n    planet_id=1,\n    name=\"Mars\",\n)\nprint(planet)"
+            "source": "import os\n\nfrom scalar_galaxy import Galaxy\n\nclient = Galaxy(\n    bearer_auth=os.environ.get(\"BEARER_AUTH\"),\n)\n\nplanet = client.planets.update(\n    planet_id=1,\n    name=\"Mars\",\n)\n\nprint(planet)"
           },
           {
             "lang": "Go",
             "label": "Go",
-            "source": "package main\n\nimport (\n\t\"context\"\n\t\"fmt\"\n\t\"os\"\n\n\tsdk \"scalar-galaxy\"\n\t\"scalar-galaxy/option\"\n)\n\nfunc main() {\n\tclient := sdk.NewClient(\n\t\toption.WithBearerAuth(os.Getenv(\"BEARER_AUTH\")),\n\t)\n\n\tplanet, err := client.Planets.Update(context.Background(), 1, sdk.PlanetUpdateParams{\n\t\tPlanet: sdk.PlanetParam{\n\t\tName: sdk.F[string](\"Mars\"),\n\t},\n\t})\n\tif err != nil {\n\t\tpanic(err)\n\t}\n\tfmt.Println(planet)\n}"
+            "source": "package main\n\nimport (\n\t\"context\"\n\t\"fmt\"\n\t\"os\"\n\n\tsdk \"scalar-galaxy\"\n\t\"scalar-galaxy/option\"\n)\n\nfunc main() {\n\tclient := sdk.NewClient(\n\t\toption.WithBearerAuth(os.Getenv(\"BEARER_AUTH\")),\n\t)\n\n\tplanet, err := client.Planets.Update(context.Background(), 1, sdk.PlanetUpdateParams{\n\t\tPlanet: sdk.PlanetParam{\n\t\tName: sdk.F[string](\"Mars\"),\n\t},\n\t})\n\tif err != nil {\n\t\tpanic(err)\n\t}\n\n\tfmt.Println(planet)\n}"
           },
           {
             "lang": "rust",
             "label": "Rust",
-            "source": "use scalar_galaxy::*;\n\nasync fn run() -> Result<(), Box<dyn std::error::Error>> {\n    let client = Galaxy::from_env()?;\n    let _ = client.planets().update(1).send().await?;\n    Ok(())\n}"
+            "source": "use scalar_galaxy::*;\n\n#[tokio::main]\nasync fn main() -> Result<(), Box<dyn std::error::Error>> {\n    let client = Galaxy::builder()\n        .bearer_token(std::env::var(\"SCALAR_BEARER_TOKEN\")?)\n        .build()?;\n\n    let response = client.planets().update(1).send().await?;\n\n    println!(\"{:?}\", response);\n\n    Ok(())\n}"
           }
         ]
       },
@@ -534,7 +538,7 @@
           {
             "lang": "rust",
             "label": "Rust",
-            "source": "use scalar_galaxy::*;\n\nasync fn run() -> Result<(), Box<dyn std::error::Error>> {\n    let client = Galaxy::from_env()?;\n    client.planets().delete(1).send().await?;\n    Ok(())\n}"
+            "source": "use scalar_galaxy::*;\n\n#[tokio::main]\nasync fn main() -> Result<(), Box<dyn std::error::Error>> {\n    let client = Galaxy::builder()\n        .bearer_token(std::env::var(\"SCALAR_BEARER_TOKEN\")?)\n        .build()?;\n\n    client.planets().delete(1).send().await?;\n\n    Ok(())\n}"
           }
         ]
       }
@@ -592,22 +596,22 @@
           {
             "lang": "TypeScript",
             "label": "TypeScript",
-            "source": "import Galaxy from \"@scalar/galaxy\";\n\nconst client = new Galaxy({\n  bearerAuth: process.env[\"BEARER_AUTH\"], // defaults to the BEARER_AUTH env var\n  environment: \"production\",\n});\n\nconst uploadImage = await client.planets.uploadImage(1);\nconsole.log(uploadImage);"
+            "source": "import Galaxy from \"@scalar/galaxy\";\n\nconst client = new Galaxy({\n  bearerAuth: process.env[\"BEARER_AUTH\"], // defaults to the BEARER_AUTH env var\n  environment: \"production\",\n});\n\nconst uploadImage = await client.planets.uploadImage(1);\n\nconsole.log(uploadImage);"
           },
           {
             "lang": "Python",
             "label": "Python",
-            "source": "import os\n\nfrom scalar_galaxy import Galaxy\n\nclient = Galaxy(\n    bearer_auth=os.environ.get(\"BEARER_AUTH\"),\n)\n\nplanet = client.planets.upload_image(\n    planet_id=1,\n)\nprint(planet)"
+            "source": "import os\n\nfrom scalar_galaxy import Galaxy\n\nclient = Galaxy(\n    bearer_auth=os.environ.get(\"BEARER_AUTH\"),\n)\n\nplanet = client.planets.upload_image(\n    planet_id=1,\n)\n\nprint(planet)"
           },
           {
             "lang": "Go",
             "label": "Go",
-            "source": "package main\n\nimport (\n\t\"context\"\n\t\"fmt\"\n\t\"io\"\n\t\"os\"\n\n\tsdk \"scalar-galaxy\"\n\t\"scalar-galaxy/option\"\n)\n\nfunc main() {\n\tclient := sdk.NewClient(\n\t\toption.WithBearerAuth(os.Getenv(\"BEARER_AUTH\")),\n\t)\n\n\tplanet, err := client.Planets.UploadImage(context.Background(), 1, sdk.PlanetUploadImageParams{})\n\tif err != nil {\n\t\tpanic(err)\n\t}\n\tfmt.Println(planet)\n}"
+            "source": "package main\n\nimport (\n\t\"context\"\n\t\"fmt\"\n\t\"io\"\n\t\"os\"\n\n\tsdk \"scalar-galaxy\"\n\t\"scalar-galaxy/option\"\n)\n\nfunc main() {\n\tclient := sdk.NewClient(\n\t\toption.WithBearerAuth(os.Getenv(\"BEARER_AUTH\")),\n\t)\n\n\tplanet, err := client.Planets.UploadImage(context.Background(), 1, sdk.PlanetUploadImageParams{})\n\tif err != nil {\n\t\tpanic(err)\n\t}\n\n\tfmt.Println(planet)\n}"
           },
           {
             "lang": "rust",
             "label": "Rust",
-            "source": "use scalar_galaxy::*;\n\nasync fn run() -> Result<(), Box<dyn std::error::Error>> {\n    let client = Galaxy::from_env()?;\n    let _ = client.planets().upload_image(1).send().await?;\n    Ok(())\n}"
+            "source": "use scalar_galaxy::*;\n\n#[tokio::main]\nasync fn main() -> Result<(), Box<dyn std::error::Error>> {\n    let client = Galaxy::builder()\n        .bearer_token(std::env::var(\"SCALAR_BEARER_TOKEN\")?)\n        .build()?;\n\n    let response = client.planets().upload_image(1).send().await?;\n\n    println!(\"{:?}\", response);\n\n    Ok(())\n}"
           }
         ]
       }
@@ -648,17 +652,17 @@
           {
             "lang": "TypeScript",
             "label": "TypeScript",
-            "source": "import Galaxy from \"@scalar/galaxy\";\n\nconst client = new Galaxy({\n  bearerAuth: process.env[\"BEARER_AUTH\"], // defaults to the BEARER_AUTH env var\n  environment: \"production\",\n});\n\nconst celestialBody = await client.celestialBodies.create({\n  name: \"Mars\",\n});\nconsole.log(celestialBody);"
+            "source": "import Galaxy from \"@scalar/galaxy\";\n\nconst client = new Galaxy({\n  bearerAuth: process.env[\"BEARER_AUTH\"], // defaults to the BEARER_AUTH env var\n  environment: \"production\",\n});\n\nconst celestialBody = await client.celestialBodies.create({\n  name: \"Mars\",\n});\n\nconsole.log(celestialBody);"
           },
           {
             "lang": "Python",
             "label": "Python",
-            "source": "import os\n\nfrom scalar_galaxy import Galaxy\n\nclient = Galaxy(\n    bearer_auth=os.environ.get(\"BEARER_AUTH\"),\n)\n\ncelestial_body = client.celestial_bodies.create(\n    name=\"Mars\",\n)\nprint(celestial_body)"
+            "source": "import os\n\nfrom scalar_galaxy import Galaxy\n\nclient = Galaxy(\n    bearer_auth=os.environ.get(\"BEARER_AUTH\"),\n)\n\ncelestial_body = client.celestial_bodies.create(\n    name=\"Mars\",\n)\n\nprint(celestial_body)"
           },
           {
             "lang": "Go",
             "label": "Go",
-            "source": "package main\n\nimport (\n\t\"context\"\n\t\"fmt\"\n\t\"os\"\n\n\tsdk \"scalar-galaxy\"\n\t\"scalar-galaxy/option\"\n)\n\nfunc main() {\n\tclient := sdk.NewClient(\n\t\toption.WithBearerAuth(os.Getenv(\"BEARER_AUTH\")),\n\t)\n\n\tcelestialBody, err := client.CelestialBodies.New(context.Background(), sdk.CelestialBodyNewParams{\n\t\tCelestialBody: sdk.PlanetParam{\n\t\tName: sdk.F[string](\"Mars\"),\n\t},\n\t})\n\tif err != nil {\n\t\tpanic(err)\n\t}\n\tfmt.Println(celestialBody)\n}"
+            "source": "package main\n\nimport (\n\t\"context\"\n\t\"fmt\"\n\t\"os\"\n\n\tsdk \"scalar-galaxy\"\n\t\"scalar-galaxy/option\"\n)\n\nfunc main() {\n\tclient := sdk.NewClient(\n\t\toption.WithBearerAuth(os.Getenv(\"BEARER_AUTH\")),\n\t)\n\n\tcelestialBody, err := client.CelestialBodies.New(context.Background(), sdk.CelestialBodyNewParams{\n\t\tCelestialBody: sdk.PlanetParam{\n\t\tName: sdk.F[string](\"Mars\"),\n\t},\n\t})\n\tif err != nil {\n\t\tpanic(err)\n\t}\n\n\tfmt.Println(celestialBody)\n}"
           }
         ]
       }
@@ -795,22 +799,22 @@
           {
             "lang": "TypeScript",
             "label": "TypeScript",
-            "source": "import Galaxy from \"@scalar/galaxy\";\n\nconst client = new Galaxy({\n  bearerAuth: process.env[\"BEARER_AUTH\"], // defaults to the BEARER_AUTH env var\n  environment: \"production\",\n});\n\nconst user = await client.authentication.createUser();\nconsole.log(user);"
+            "source": "import Galaxy from \"@scalar/galaxy\";\n\nconst client = new Galaxy({\n  bearerAuth: process.env[\"BEARER_AUTH\"], // defaults to the BEARER_AUTH env var\n  environment: \"production\",\n});\n\nconst user = await client.authentication.createUser();\n\nconsole.log(user);"
           },
           {
             "lang": "Python",
             "label": "Python",
-            "source": "import os\n\nfrom scalar_galaxy import Galaxy\n\nclient = Galaxy(\n    bearer_auth=os.environ.get(\"BEARER_AUTH\"),\n)\n\nauthentication = client.authentication.create_user(\n    name=\"Marc\",\n    email=\"marc@scalar.com\",\n    password=\"i-love-scalar\",\n)\nprint(authentication)"
+            "source": "import os\n\nfrom scalar_galaxy import Galaxy\n\nclient = Galaxy(\n    bearer_auth=os.environ.get(\"BEARER_AUTH\"),\n)\n\nauthentication = client.authentication.create_user(\n    name=\"Marc\",\n    email=\"marc@scalar.com\",\n    password=\"i-love-scalar\",\n)\n\nprint(authentication)"
           },
           {
             "lang": "Go",
             "label": "Go",
-            "source": "package main\n\nimport (\n\t\"context\"\n\t\"fmt\"\n\t\"os\"\n\n\tsdk \"scalar-galaxy\"\n\t\"scalar-galaxy/option\"\n)\n\nfunc main() {\n\tclient := sdk.NewClient(\n\t\toption.WithBearerAuth(os.Getenv(\"BEARER_AUTH\")),\n\t)\n\n\tauthentication, err := client.Authentication.NewUser(context.Background(), sdk.AuthenticationNewUserParams{\n\t\tEmail: sdk.F[string](\"marc@scalar.com\"),\n\t\tPassword: sdk.F[string](\"i-love-scalar\"),\n\t\tName: sdk.F[string](\"Marc\"),\n\t})\n\tif err != nil {\n\t\tpanic(err)\n\t}\n\tfmt.Println(authentication)\n}"
+            "source": "package main\n\nimport (\n\t\"context\"\n\t\"fmt\"\n\t\"os\"\n\n\tsdk \"scalar-galaxy\"\n\t\"scalar-galaxy/option\"\n)\n\nfunc main() {\n\tclient := sdk.NewClient(\n\t\toption.WithBearerAuth(os.Getenv(\"BEARER_AUTH\")),\n\t)\n\n\tauthentication, err := client.Authentication.NewUser(context.Background(), sdk.AuthenticationNewUserParams{\n\t\tEmail: sdk.F[string](\"marc@scalar.com\"),\n\t\tPassword: sdk.F[string](\"i-love-scalar\"),\n\t\tName: sdk.F[string](\"Marc\"),\n\t})\n\tif err != nil {\n\t\tpanic(err)\n\t}\n\n\tfmt.Println(authentication)\n}"
           },
           {
             "lang": "rust",
             "label": "Rust",
-            "source": "use scalar_galaxy::*;\n\nasync fn run() -> Result<(), Box<dyn std::error::Error>> {\n    let client = Galaxy::from_env()?;\n    let _ = client.authentication().create_user().send().await?;\n    Ok(())\n}"
+            "source": "use scalar_galaxy::*;\n\n#[tokio::main]\nasync fn main() -> Result<(), Box<dyn std::error::Error>> {\n    let client = Galaxy::builder()\n        .bearer_token(std::env::var(\"SCALAR_BEARER_TOKEN\")?)\n        .build()?;\n\n    let response = client.authentication().create_user().send().await?;\n\n    println!(\"{:?}\", response);\n\n    Ok(())\n}"
           }
         ]
       }
@@ -887,22 +891,22 @@
           {
             "lang": "TypeScript",
             "label": "TypeScript",
-            "source": "import Galaxy from \"@scalar/galaxy\";\n\nconst client = new Galaxy({\n  bearerAuth: process.env[\"BEARER_AUTH\"], // defaults to the BEARER_AUTH env var\n  environment: \"production\",\n});\n\nconst createToken = await client.authentication.createToken();\nconsole.log(createToken);"
+            "source": "import Galaxy from \"@scalar/galaxy\";\n\nconst client = new Galaxy({\n  bearerAuth: process.env[\"BEARER_AUTH\"], // defaults to the BEARER_AUTH env var\n  environment: \"production\",\n});\n\nconst createToken = await client.authentication.createToken();\n\nconsole.log(createToken);"
           },
           {
             "lang": "Python",
             "label": "Python",
-            "source": "import os\n\nfrom scalar_galaxy import Galaxy\n\nclient = Galaxy(\n    bearer_auth=os.environ.get(\"BEARER_AUTH\"),\n)\n\nauthentication = client.authentication.create_token(\n    email=\"marc@scalar.com\",\n    password=\"i-love-scalar\",\n)\nprint(authentication)"
+            "source": "import os\n\nfrom scalar_galaxy import Galaxy\n\nclient = Galaxy(\n    bearer_auth=os.environ.get(\"BEARER_AUTH\"),\n)\n\nauthentication = client.authentication.create_token(\n    email=\"marc@scalar.com\",\n    password=\"i-love-scalar\",\n)\n\nprint(authentication)"
           },
           {
             "lang": "Go",
             "label": "Go",
-            "source": "package main\n\nimport (\n\t\"context\"\n\t\"fmt\"\n\t\"os\"\n\n\tsdk \"scalar-galaxy\"\n\t\"scalar-galaxy/option\"\n)\n\nfunc main() {\n\tclient := sdk.NewClient(\n\t\toption.WithBearerAuth(os.Getenv(\"BEARER_AUTH\")),\n\t)\n\n\tauthentication, err := client.Authentication.NewToken(context.Background(), sdk.AuthenticationNewTokenParams{\n\t\tCredentials: sdk.CredentialsParam{\n\t\tEmail: sdk.F[string](\"marc@scalar.com\"),\n\t\tPassword: sdk.F[string](\"i-love-scalar\"),\n\t},\n\t})\n\tif err != nil {\n\t\tpanic(err)\n\t}\n\tfmt.Println(authentication)\n}"
+            "source": "package main\n\nimport (\n\t\"context\"\n\t\"fmt\"\n\t\"os\"\n\n\tsdk \"scalar-galaxy\"\n\t\"scalar-galaxy/option\"\n)\n\nfunc main() {\n\tclient := sdk.NewClient(\n\t\toption.WithBearerAuth(os.Getenv(\"BEARER_AUTH\")),\n\t)\n\n\tauthentication, err := client.Authentication.NewToken(context.Background(), sdk.AuthenticationNewTokenParams{\n\t\tCredentials: sdk.CredentialsParam{\n\t\tEmail: sdk.F[string](\"marc@scalar.com\"),\n\t\tPassword: sdk.F[string](\"i-love-scalar\"),\n\t},\n\t})\n\tif err != nil {\n\t\tpanic(err)\n\t}\n\n\tfmt.Println(authentication)\n}"
           },
           {
             "lang": "rust",
             "label": "Rust",
-            "source": "use scalar_galaxy::*;\n\nasync fn run() -> Result<(), Box<dyn std::error::Error>> {\n    let client = Galaxy::from_env()?;\n    let _ = client.authentication().create_token().send().await?;\n    Ok(())\n}"
+            "source": "use scalar_galaxy::*;\n\n#[tokio::main]\nasync fn main() -> Result<(), Box<dyn std::error::Error>> {\n    let client = Galaxy::builder()\n        .bearer_token(std::env::var(\"SCALAR_BEARER_TOKEN\")?)\n        .build()?;\n\n    let response = client.authentication().create_token().send().await?;\n\n    println!(\"{:?}\", response);\n\n    Ok(())\n}"
           }
         ]
       }
@@ -980,22 +984,22 @@
           {
             "lang": "TypeScript",
             "label": "TypeScript",
-            "source": "import Galaxy from \"@scalar/galaxy\";\n\nconst client = new Galaxy({\n  bearerAuth: process.env[\"BEARER_AUTH\"], // defaults to the BEARER_AUTH env var\n  environment: \"production\",\n});\n\nconst user = await client.authentication.listMe();\nconsole.log(user);"
+            "source": "import Galaxy from \"@scalar/galaxy\";\n\nconst client = new Galaxy({\n  bearerAuth: process.env[\"BEARER_AUTH\"], // defaults to the BEARER_AUTH env var\n  environment: \"production\",\n});\n\nconst user = await client.authentication.listMe();\n\nconsole.log(user);"
           },
           {
             "lang": "Python",
             "label": "Python",
-            "source": "import os\n\nfrom scalar_galaxy import Galaxy\n\nclient = Galaxy(\n    bearer_auth=os.environ.get(\"BEARER_AUTH\"),\n)\n\nauthentication = client.authentication.list_me()\nprint(authentication)"
+            "source": "import os\n\nfrom scalar_galaxy import Galaxy\n\nclient = Galaxy(\n    bearer_auth=os.environ.get(\"BEARER_AUTH\"),\n)\n\nauthentication = client.authentication.list_me()\n\nprint(authentication)"
           },
           {
             "lang": "Go",
             "label": "Go",
-            "source": "package main\n\nimport (\n\t\"context\"\n\t\"fmt\"\n\t\"os\"\n\n\tsdk \"scalar-galaxy\"\n\t\"scalar-galaxy/option\"\n)\n\nfunc main() {\n\tclient := sdk.NewClient(\n\t\toption.WithBearerAuth(os.Getenv(\"BEARER_AUTH\")),\n\t)\n\n\tauthentication, err := client.Authentication.ListMe(context.Background())\n\tif err != nil {\n\t\tpanic(err)\n\t}\n\tfmt.Println(authentication)\n}"
+            "source": "package main\n\nimport (\n\t\"context\"\n\t\"fmt\"\n\t\"os\"\n\n\tsdk \"scalar-galaxy\"\n\t\"scalar-galaxy/option\"\n)\n\nfunc main() {\n\tclient := sdk.NewClient(\n\t\toption.WithBearerAuth(os.Getenv(\"BEARER_AUTH\")),\n\t)\n\n\tauthentication, err := client.Authentication.ListMe(context.Background())\n\tif err != nil {\n\t\tpanic(err)\n\t}\n\n\tfmt.Println(authentication)\n}"
           },
           {
             "lang": "rust",
             "label": "Rust",
-            "source": "use scalar_galaxy::*;\n\nasync fn run() -> Result<(), Box<dyn std::error::Error>> {\n    let client = Galaxy::from_env()?;\n    let _ = client.authentication().list_me().send().await?;\n    Ok(())\n}"
+            "source": "use scalar_galaxy::*;\n\n#[tokio::main]\nasync fn main() -> Result<(), Box<dyn std::error::Error>> {\n    let client = Galaxy::builder()\n        .bearer_token(std::env::var(\"SCALAR_BEARER_TOKEN\")?)\n        .build()?;\n\n    let response = client.authentication().list_me().send().await?;\n\n    println!(\"{:?}\", response);\n\n    Ok(())\n}"
           }
         ]
       }

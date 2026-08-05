@@ -6,6 +6,16 @@ The full API of this library can be found in [api.md](./api.md).
 
 ## Installation
 
+Add this to your `Cargo.toml`:
+
+```toml
+[dependencies]
+scalar-galaxy = "0.1.0" # x-release-please-version
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+```
+
+Or install via cargo:
+
 ```sh
 cargo add scalar-galaxy
 cargo add tokio --features rt-multi-thread,macros
