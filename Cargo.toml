@@ -1,6 +1,6 @@
 [package]
 name = "scalar-galaxy"
-version = "0.1.0" # x-release-please-version
+version = "0.2.0" # x-release-please-version
 edition = "2024"
 rust-version = "1.85"
 description = "The Scalar Galaxy is an example OpenAPI document to test OpenAPI tools and libraries. It's a fictional universe with fictional planets and fictional data."
