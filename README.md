@@ -6,6 +6,16 @@ The full API of this library can be found in [api.md](./api.md).
 
 ## Installation
 
+Add this to your `Cargo.toml`:
+
+```toml
+[dependencies]
+scalar-galaxy = "0.2.0" # x-release-please-version
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+```
+
+Or install via cargo:
+
 ```sh
 cargo add scalar-galaxy
 cargo add tokio --features rt-multi-thread,macros
@@ -14,8 +24,30 @@ cargo add tokio --features rt-multi-thread,macros
 ## Usage
 
 The client is asynchronous, with `reqwest` as the default HTTP backend
-(swappable — see "Bring your own HTTP client" below). Construct it with
-the builder, or read credentials from the environment:
+(swappable — see "Bring your own HTTP client" below):
+
+```rust,ignore
+use scalar_galaxy::*;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = Galaxy::builder()
+        .bearer_token(std::env::var("SCALAR_BEARER_TOKEN")?)
+        .build()?;
+
+    let response = client.planets().list_all_data().send().await?;
+
+    println!("{:?}", response);
+
+    Ok(())
+}
+```
+
+Every operation returns a request builder; set optional parameters fluently
+and finish with `.send().await`.
+
+The builder accepts every credential this API takes, and `from_env` reads
+them from the environment instead:
 
 ```rust,no_run
 use scalar_galaxy::Galaxy;
@@ -36,13 +68,6 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let _ = client;
     Ok(())
 }
-```
-
-Every operation returns a request builder; set optional parameters fluently
-and finish with `.send().await`:
-
-```rust,ignore
-let response = client.planets().list_all_data().send().await?;
 ```
 
 ## Authentication
@@ -163,7 +188,7 @@ mock.enqueue(200, r#"{"id":"example"}"#);
 
 let client = Galaxy::builder()
     .transport(mock.clone()) // clone into the builder, assert on the original
-    .sleeper(InstantSleep)   // retry backoff resolves instantly in tests
+    .sleeper(InstantSleep) // retry backoff resolves instantly in tests
     .build()?;
 
 // ... call the client, then assert on what went over the wire:

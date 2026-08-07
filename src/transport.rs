@@ -700,9 +700,7 @@ pub mod multipart {
             Part {
                 filename: Some(self.filename.unwrap_or_else(|| name.clone())),
                 name,
-                content_type: self
-                    .content_type
-                    .or_else(|| default_content_type.map(str::to_string)),
+                content_type: self.content_type.or_else(|| default_content_type.map(str::to_string)),
                 body: self.body,
             }
         }
@@ -876,7 +874,9 @@ pub mod multipart {
         /// Buffers an encoded form so assertions can read the wire bytes.
         fn encoded(parts: Vec<Part>) -> (String, String) {
             let (content_type, body) = encode(parts);
-            let bytes = body.as_bytes().expect("an all-buffered form encodes to a buffered body");
+            let bytes = body
+                .as_bytes()
+                .expect("an all-buffered form encodes to a buffered body");
             (content_type, String::from_utf8_lossy(bytes).into_owned())
         }
 
@@ -891,12 +891,18 @@ pub mod multipart {
             let boundary = content_type
                 .strip_prefix("multipart/form-data; boundary=")
                 .expect("the content type carries the generated boundary");
-            assert!(body.contains(&format!("--{boundary}\r\n")), "opening boundary missing: {body}");
+            assert!(
+                body.contains(&format!("--{boundary}\r\n")),
+                "opening boundary missing: {body}"
+            );
             assert!(
                 body.contains("Content-Disposition: form-data; name=\"file\"; filename=\"report.pdf\"\r\n"),
                 "disposition missing name/filename: {body}"
             );
-            assert!(body.contains("Content-Type: application/pdf\r\n"), "part content type missing: {body}");
+            assert!(
+                body.contains("Content-Type: application/pdf\r\n"),
+                "part content type missing: {body}"
+            );
             // The payload rides verbatim: an upload is bytes, never a
             // JSON-stringified scalar.
             assert!(body.contains("\r\n\r\nPDF-BYTES\r\n"), "file bytes missing: {body}");
@@ -908,12 +914,21 @@ pub mod multipart {
             // part; an explicit caller value must override it, not the reverse.
             let explicit = Upload::from_bytes("x").content_type("image/png");
             let (_, body) = encoded(vec![explicit.into_part("file", Some("application/pdf"))]);
-            assert!(body.contains("Content-Type: image/png\r\n"), "caller content type lost: {body}");
-            assert!(!body.contains("application/pdf"), "spec default overrode the caller: {body}");
+            assert!(
+                body.contains("Content-Type: image/png\r\n"),
+                "caller content type lost: {body}"
+            );
+            assert!(
+                !body.contains("application/pdf"),
+                "spec default overrode the caller: {body}"
+            );
 
             let bare = Upload::from_bytes("x");
             let (_, body) = encoded(vec![bare.into_part("file", Some("application/pdf"))]);
-            assert!(body.contains("Content-Type: application/pdf\r\n"), "spec default missing: {body}");
+            assert!(
+                body.contains("Content-Type: application/pdf\r\n"),
+                "spec default missing: {body}"
+            );
         }
 
         #[test]

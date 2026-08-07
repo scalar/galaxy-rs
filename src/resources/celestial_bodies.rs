@@ -80,7 +80,10 @@ impl CreateRequest {
             headers.push(("Idempotency-Key".to_string(), key));
         }
         let body = Some(&self.body);
-        let overrides = crate::client::RequestOverrides { timeout: self.timeout, max_retries: self.max_retries };
+        let overrides = crate::client::RequestOverrides {
+            timeout: self.timeout,
+            max_retries: self.max_retries,
+        };
         self.client
             .send::<crate::models::CelestialBody, _>(http::Method::POST, &path, &query, &headers, body, true, overrides)
             .await

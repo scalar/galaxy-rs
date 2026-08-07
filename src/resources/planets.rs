@@ -115,9 +115,20 @@ impl ListAllDataRequest {
         }
         let headers: Vec<(String, String)> = Vec::new();
         let body: Option<&serde_json::Value> = None;
-        let overrides = crate::client::RequestOverrides { timeout: self.timeout, max_retries: self.max_retries };
+        let overrides = crate::client::RequestOverrides {
+            timeout: self.timeout,
+            max_retries: self.max_retries,
+        };
         self.client
-            .send::<crate::models::PaginatedResource, _>(http::Method::GET, &path, &query, &headers, body, true, overrides)
+            .send::<crate::models::PaginatedResource, _>(
+                http::Method::GET,
+                &path,
+                &query,
+                &headers,
+                body,
+                true,
+                overrides,
+            )
             .await
     }
 }
@@ -190,7 +201,10 @@ impl CreateRequest {
             headers.push(("Idempotency-Key".to_string(), key));
         }
         let body = self.body.as_ref();
-        let overrides = crate::client::RequestOverrides { timeout: self.timeout, max_retries: self.max_retries };
+        let overrides = crate::client::RequestOverrides {
+            timeout: self.timeout,
+            max_retries: self.max_retries,
+        };
         self.client
             .send::<crate::models::Planet, _>(http::Method::POST, &path, &query, &headers, body, true, overrides)
             .await
@@ -244,11 +258,17 @@ impl RetrieveRequest {
     /// - [`Error::Serde`](crate::error::Error::Serde) — the response body did not
     ///   match the generated model.
     pub async fn send(self) -> Result<crate::models::Planet, crate::error::Error> {
-        let path = format!("/planets/{}", crate::http::encode_path_param(&crate::http::scalar_value(&self.planet_id)));
+        let path = format!(
+            "/planets/{}",
+            crate::http::encode_path_param(&crate::http::scalar_value(&self.planet_id))
+        );
         let query: Vec<(String, String)> = Vec::new();
         let headers: Vec<(String, String)> = Vec::new();
         let body: Option<&serde_json::Value> = None;
-        let overrides = crate::client::RequestOverrides { timeout: self.timeout, max_retries: self.max_retries };
+        let overrides = crate::client::RequestOverrides {
+            timeout: self.timeout,
+            max_retries: self.max_retries,
+        };
         self.client
             .send::<crate::models::Planet, _>(http::Method::GET, &path, &query, &headers, body, true, overrides)
             .await
@@ -318,14 +338,20 @@ impl UpdateRequest {
     /// - [`Error::Serde`](crate::error::Error::Serde) — the response body did not
     ///   match the generated model.
     pub async fn send(self) -> Result<crate::models::Planet, crate::error::Error> {
-        let path = format!("/planets/{}", crate::http::encode_path_param(&crate::http::scalar_value(&self.planet_id)));
+        let path = format!(
+            "/planets/{}",
+            crate::http::encode_path_param(&crate::http::scalar_value(&self.planet_id))
+        );
         let query: Vec<(String, String)> = Vec::new();
         let mut headers: Vec<(String, String)> = Vec::new();
         if let Some(key) = self.idempotency_key {
             headers.push(("Idempotency-Key".to_string(), key));
         }
         let body = self.body.as_ref();
-        let overrides = crate::client::RequestOverrides { timeout: self.timeout, max_retries: self.max_retries };
+        let overrides = crate::client::RequestOverrides {
+            timeout: self.timeout,
+            max_retries: self.max_retries,
+        };
         self.client
             .send::<crate::models::Planet, _>(http::Method::PUT, &path, &query, &headers, body, true, overrides)
             .await
@@ -385,14 +411,21 @@ impl DeleteRequest {
     /// - [`Error::Config`](crate::error::Error::Config) — a parameter value could not
     ///   be rendered into the request.
     pub async fn send(self) -> Result<(), crate::error::Error> {
-        let path = format!("/planets/{}", crate::http::encode_path_param(&crate::http::scalar_value(&self.planet_id)));
+        let path = format!(
+            "/planets/{}",
+            crate::http::encode_path_param(&crate::http::scalar_value(&self.planet_id))
+        );
         let query: Vec<(String, String)> = Vec::new();
         let mut headers: Vec<(String, String)> = Vec::new();
+        headers.push(("Accept".to_string(), "*/*".to_string()));
         if let Some(key) = self.idempotency_key {
             headers.push(("Idempotency-Key".to_string(), key));
         }
         let body: Option<&serde_json::Value> = None;
-        let overrides = crate::client::RequestOverrides { timeout: self.timeout, max_retries: self.max_retries };
+        let overrides = crate::client::RequestOverrides {
+            timeout: self.timeout,
+            max_retries: self.max_retries,
+        };
         self.client
             .send_empty(http::Method::DELETE, &path, &query, &headers, body, true, overrides)
             .await
@@ -464,7 +497,10 @@ impl UploadImageRequest {
     /// - [`Error::Serde`](crate::error::Error::Serde) — the response body did not
     ///   match the generated model.
     pub async fn send(self) -> Result<crate::models::PlanetsUploadImageResponse, crate::error::Error> {
-        let path = format!("/planets/{}/image", crate::http::encode_path_param(&crate::http::scalar_value(&self.planet_id)));
+        let path = format!(
+            "/planets/{}/image",
+            crate::http::encode_path_param(&crate::http::scalar_value(&self.planet_id))
+        );
         let query: Vec<(String, String)> = Vec::new();
         let mut headers: Vec<(String, String)> = Vec::new();
         if let Some(key) = self.idempotency_key {
@@ -474,9 +510,20 @@ impl UploadImageRequest {
         if let Some(upload) = self.image {
             parts.push(upload.into_part("image", None));
         }
-        let overrides = crate::client::RequestOverrides { timeout: self.timeout, max_retries: self.max_retries };
+        let overrides = crate::client::RequestOverrides {
+            timeout: self.timeout,
+            max_retries: self.max_retries,
+        };
         self.client
-            .send_multipart_parts::<crate::models::PlanetsUploadImageResponse>(http::Method::POST, &path, &query, &headers, parts, true, overrides)
+            .send_multipart_parts::<crate::models::PlanetsUploadImageResponse>(
+                http::Method::POST,
+                &path,
+                &query,
+                &headers,
+                parts,
+                true,
+                overrides,
+            )
             .await
     }
 }

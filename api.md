@@ -23,7 +23,14 @@ Complete reference of every operation, grouped by resource. See [the README](./R
 ```rust
 use scalar_galaxy::*;
 
-let client = Galaxy::from_env()?;
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = Galaxy::from_env()?;
+
+    // ... the samples below go here
+
+    Ok(())
+}
 ```
 
 ## `Planets`

@@ -90,7 +90,12 @@ mod trace {
     /// records whether the delay came from the server's `Retry-After` header or
     /// from the client's own exponential backoff.
     pub(super) fn retry_status(status: http::StatusCode, delay: std::time::Duration, source: &'static str) {
-        tracing::debug!(status = status.as_u16(), delay_ms = millis(delay), source, "retrying request");
+        tracing::debug!(
+            status = status.as_u16(),
+            delay_ms = millis(delay),
+            source,
+            "retrying request"
+        );
     }
 
     /// A transient transport failure was classified as retryable and a replay
@@ -124,7 +129,11 @@ mod trace {
     /// Only the status and an error class are logged, never the body that
     /// failed to decode.
     pub(super) fn decode_failed(status: http::StatusCode, error: &crate::error::Error) {
-        tracing::debug!(status = status.as_u16(), error_class = class(error), "response decode failed");
+        tracing::debug!(
+            status = status.as_u16(),
+            error_class = class(error),
+            "response decode failed"
+        );
     }
 
     /// An OAuth client-credentials exchange failed and the request authenticated
@@ -446,8 +455,9 @@ pub async fn decode_json<T: DeserializeOwned>(response: http::Response<SdkBody>,
         // Decode failures on the success path are the ones worth tracing: a
         // non-success status is already reported as the terminal outcome by
         // `send_with_retries` and surfaces to the caller as a typed `ApiError`.
-        let bytes =
-            collect_capped(body, cap).await.inspect_err(|error| trace::decode_failed(parts.status, error))?;
+        let bytes = collect_capped(body, cap)
+            .await
+            .inspect_err(|error| trace::decode_failed(parts.status, error))?;
         // A successful response with an empty body (a 204, or a 200/202 with no
         // content) is not valid JSON; decode it as `null` so `Option<T>` and
         // unit-like return types succeed instead of failing with an EOF error.
@@ -461,7 +471,13 @@ pub async fn decode_json<T: DeserializeOwned>(response: http::Response<SdkBody>,
             .inspect_err(|error| trace::decode_failed(parts.status, error))
     } else {
         let (bytes, truncated) = collect_truncated(body, cap).await;
-        Err(Error::from(ApiError::from_parts(parts.status.as_u16(), parts.headers, request_id, &bytes, truncated)))
+        Err(Error::from(ApiError::from_parts(
+            parts.status.as_u16(),
+            parts.headers,
+            request_id,
+            &bytes,
+            truncated,
+        )))
     }
 }
 
@@ -483,10 +499,18 @@ pub async fn decode_bytes(response: http::Response<SdkBody>, cap: usize) -> Resu
     // Status first — see `decode_json` for why error bodies must not be able
     // to fail collection.
     if parts.status.is_success() {
-        collect_capped(body, cap).await.inspect_err(|error| trace::decode_failed(parts.status, error))
+        collect_capped(body, cap)
+            .await
+            .inspect_err(|error| trace::decode_failed(parts.status, error))
     } else {
         let (bytes, truncated) = collect_truncated(body, cap).await;
-        Err(Error::from(ApiError::from_parts(parts.status.as_u16(), parts.headers, request_id, &bytes, truncated)))
+        Err(Error::from(ApiError::from_parts(
+            parts.status.as_u16(),
+            parts.headers,
+            request_id,
+            &bytes,
+            truncated,
+        )))
     }
 }
 
@@ -509,7 +533,13 @@ pub async fn decode_empty(response: http::Response<SdkBody>, cap: usize) -> Resu
         Ok(())
     } else {
         let (bytes, truncated) = collect_truncated(body, cap).await;
-        Err(Error::from(ApiError::from_parts(parts.status.as_u16(), parts.headers, request_id, &bytes, truncated)))
+        Err(Error::from(ApiError::from_parts(
+            parts.status.as_u16(),
+            parts.headers,
+            request_id,
+            &bytes,
+            truncated,
+        )))
     }
 }
 
@@ -826,11 +856,20 @@ mod tests {
         let resolve = |link: &str| base.join(link).map_or_else(|_| link.to_string(), String::from);
 
         // Path-absolute replaces the base path — it must NOT append to the prefix.
-        assert_eq!(resolve("/v2/items?cursor=abc"), "https://api.example.com/v2/items?cursor=abc");
+        assert_eq!(
+            resolve("/v2/items?cursor=abc"),
+            "https://api.example.com/v2/items?cursor=abc"
+        );
         // Absolute is used wholesale.
-        assert_eq!(resolve("https://other.example.com/x?c=1"), "https://other.example.com/x?c=1");
+        assert_eq!(
+            resolve("https://other.example.com/x?c=1"),
+            "https://other.example.com/x?c=1"
+        );
         // Relative resolves against the base, prefix intact.
-        assert_eq!(resolve("items?cursor=abc"), "https://api.example.com/v1/items?cursor=abc");
+        assert_eq!(
+            resolve("items?cursor=abc"),
+            "https://api.example.com/v1/items?cursor=abc"
+        );
         // The old trim-then-join behavior would have produced this for the
         // path-absolute case; assert we do not.
         assert_ne!(resolve("/v2/items"), "https://api.example.com/v1/v2/items");
@@ -892,7 +931,13 @@ mod tests {
 
     #[test]
     fn deep_object_pairs_expands_one_pair_per_property() {
-        let pairs = deep_object_pairs("filter", &Filter { status: "active", limit: 10 });
+        let pairs = deep_object_pairs(
+            "filter",
+            &Filter {
+                status: "active",
+                limit: 10,
+            },
+        );
 
         // Sorted by property name, not declaration order: `serde_json::Map` is a
         // `BTreeMap` here, which is what keeps the query string reproducible.
@@ -966,9 +1011,7 @@ mod tests {
             deep_object_pairs("filter", &serde_json::json!("active")),
             vec![("filter".to_string(), "active".to_string())]
         );
-        assert!(
-            deep_object_pairs("filter", &serde_json::Value::Null).is_empty()
-        );
+        assert!(deep_object_pairs("filter", &serde_json::Value::Null).is_empty());
     }
 
     #[test]
@@ -978,7 +1021,13 @@ mod tests {
         // escaped exactly once, so the server sees one `a|b` value and one
         // `filter[status]` name.
         let joined = ["a", "b"].iter().map(scalar_value).collect::<Vec<_>>().join("|");
-        let pairs = deep_object_pairs("filter", &Filter { status: "active", limit: 10 });
+        let pairs = deep_object_pairs(
+            "filter",
+            &Filter {
+                status: "active",
+                limit: 10,
+            },
+        );
 
         let mut url = url::Url::parse("https://api.example.com/v1/items").expect("a static url parses");
         {
@@ -989,7 +1038,10 @@ mod tests {
             }
         }
 
-        assert_eq!(url.query(), Some("tags=a%7Cb&filter%5Blimit%5D=10&filter%5Bstatus%5D=active"));
+        assert_eq!(
+            url.query(),
+            Some("tags=a%7Cb&filter%5Blimit%5D=10&filter%5Bstatus%5D=active")
+        );
     }
 
     /// A transport handing out scripted responses in order; the test fails
@@ -1054,7 +1106,9 @@ mod tests {
         if let Some(seconds) = retry_after {
             builder = builder.header(http::header::RETRY_AFTER, seconds.to_string());
         }
-        builder.body(SdkBody::from_bytes(body)).expect("statically valid response parts must build")
+        builder
+            .body(SdkBody::from_bytes(body))
+            .expect("statically valid response parts must build")
     }
 
     /// Builds a POST request: non-idempotent and unkeyed, the strictest case
@@ -1263,7 +1317,9 @@ mod tests {
                         .status(200)
                         .body(SdkBody::from_bytes(r#"{"api_key":"super-secret-key"}"#))
                         .expect("statically valid response parts must build");
-                    decode_json::<u64>(response, 1024).await.expect_err("an object is not a u64");
+                    decode_json::<u64>(response, 1024)
+                        .await
+                        .expect_err("an object is not a u64");
                 });
                 sink.rendered()
             })
@@ -1275,17 +1331,38 @@ mod tests {
 
             // The whole point: nothing a caller configured as a credential may
             // reach a log line.
-            assert!(!rendered.contains("super-secret-key"), "query credential leaked: {rendered}");
-            assert!(!rendered.contains("super-secret-token"), "header credential leaked: {rendered}");
-            assert!(!rendered.contains("authorization"), "header names must not be logged: {rendered}");
+            assert!(
+                !rendered.contains("super-secret-key"),
+                "query credential leaked: {rendered}"
+            );
+            assert!(
+                !rendered.contains("super-secret-token"),
+                "header credential leaked: {rendered}"
+            );
+            assert!(
+                !rendered.contains("authorization"),
+                "header names must not be logged: {rendered}"
+            );
             // The URL is still there — redacted, not dropped — so the event
             // stays diagnosable.
-            assert!(rendered.contains("url=https://api.example.com/v1/items?…"), "redacted url missing: {rendered}");
+            assert!(
+                rendered.contains("url=https://api.example.com/v1/items?…"),
+                "redacted url missing: {rendered}"
+            );
             // The retry decision reports where the delay came from.
-            assert!(rendered.contains("source=\"retry-after\""), "retry source missing: {rendered}");
-            assert!(rendered.contains("status=200 attempts=2"), "terminal outcome missing: {rendered}");
+            assert!(
+                rendered.contains("source=\"retry-after\""),
+                "retry source missing: {rendered}"
+            );
+            assert!(
+                rendered.contains("status=200 attempts=2"),
+                "terminal outcome missing: {rendered}"
+            );
             // A decode failure reports a class, never the body that failed.
-            assert!(rendered.contains("error_class=\"serde\""), "decode failure class missing: {rendered}");
+            assert!(
+                rendered.contains("error_class=\"serde\""),
+                "decode failure class missing: {rendered}"
+            );
         }
 
         /// The credential-fallback event says what happened and nothing else:
@@ -1297,10 +1374,17 @@ mod tests {
             let sink = capture.clone();
             tracing::subscriber::with_default(capture, trace_oauth_fallback);
             let rendered = sink.rendered();
-            assert!(rendered.contains("oauth token exchange failed"), "fallback event missing: {rendered}");
+            assert!(
+                rendered.contains("oauth token exchange failed"),
+                "fallback event missing: {rendered}"
+            );
             // `message` is the only `name=value` pair the renderer can print for
             // this event; anything else would be a field carrying auth detail.
-            assert_eq!(rendered.matches('=').count(), 1, "the event must carry no fields: {rendered}");
+            assert_eq!(
+                rendered.matches('=').count(),
+                1,
+                "the event must carry no fields: {rendered}"
+            );
         }
     }
 }

@@ -56,8 +56,14 @@ async fn authenticates_requests_with_configured_credentials() {
     assert!(result.is_ok(), "authenticated call failed: {result:?}");
     let recorded = mock.requests();
     assert_eq!(recorded.len(), 1);
-    let authorization = recorded[0].headers.get(::http::header::AUTHORIZATION).expect("authorization header");
-    assert_eq!(authorization.to_str().expect("ascii header"), "Basic dGVzdC11c2VybmFtZTp0ZXN0LXBhc3N3b3Jk");
+    let authorization = recorded[0]
+        .headers
+        .get(::http::header::AUTHORIZATION)
+        .expect("authorization header");
+    assert_eq!(
+        authorization.to_str().expect("ascii header"),
+        "Basic dGVzdC11c2VybmFtZTp0ZXN0LXBhc3N3b3Jk"
+    );
 }
 
 /// The ordinary client-credentials request: one exchange, then the fetched
@@ -91,10 +97,23 @@ async fn oauth_fetches_one_token_and_reuses_it() {
     assert!(result.is_ok(), "second authenticated call failed: {result:?}");
     let recorded = mock.requests();
     assert_eq!(recorded.len(), 3, "expected one token request and two API requests");
-    assert_eq!(recorded.iter().filter(|request| request.uri.to_string().contains("/oauth/token")).count(), 1, "the token endpoint must be dialed exactly once, not per request");
+    assert_eq!(
+        recorded
+            .iter()
+            .filter(|request| request.uri.to_string().contains("/oauth/token"))
+            .count(),
+        1,
+        "the token endpoint must be dialed exactly once, not per request"
+    );
     for request in &recorded[1..] {
-        let authorization = request.headers.get(::http::header::AUTHORIZATION).expect("authorization header");
-        assert_eq!(authorization.to_str().expect("ascii header"), "Bearer mock-access-token");
+        let authorization = request
+            .headers
+            .get(::http::header::AUTHORIZATION)
+            .expect("authorization header");
+        assert_eq!(
+            authorization.to_str().expect("ascii header"),
+            "Bearer mock-access-token"
+        );
     }
 }
 
@@ -164,9 +183,22 @@ async fn oauth_token_endpoint_is_untouched_when_another_credential_wins() {
     assert!(result.is_ok(), "authenticated call failed: {result:?}");
     let recorded = mock.requests();
     assert_eq!(recorded.len(), 1, "only the API request should have been sent");
-    assert_eq!(recorded.iter().filter(|request| request.uri.to_string().contains("/oauth/token")).count(), 0, "the token endpoint must not be dialed for this request");
-    let authorization = recorded[0].headers.get(::http::header::AUTHORIZATION).expect("authorization header");
-    assert_eq!(authorization.to_str().expect("ascii header"), "Basic dGVzdC11c2VybmFtZTp0ZXN0LXBhc3N3b3Jk");
+    assert_eq!(
+        recorded
+            .iter()
+            .filter(|request| request.uri.to_string().contains("/oauth/token"))
+            .count(),
+        0,
+        "the token endpoint must not be dialed for this request"
+    );
+    let authorization = recorded[0]
+        .headers
+        .get(::http::header::AUTHORIZATION)
+        .expect("authorization header");
+    assert_eq!(
+        authorization.to_str().expect("ascii header"),
+        "Basic dGVzdC11c2VybmFtZTp0ZXN0LXBhc3N3b3Jk"
+    );
 }
 
 /// A 429 followed by a 200: the runtime replays this crate's anchor
@@ -276,5 +308,9 @@ fn default_headers_replacement_clears_invalid_entry() {
         .default_header("bad header name", "value")
         .default_headers(::http::HeaderMap::new())
         .build();
-    assert!(client.is_ok(), "replacement should clear the invalid-header record: {:?}", client.err());
+    assert!(
+        client.is_ok(),
+        "replacement should clear the invalid-header record: {:?}",
+        client.err()
+    );
 }

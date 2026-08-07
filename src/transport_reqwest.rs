@@ -108,10 +108,7 @@ impl Transport for ReqwestTransport {
 /// URL — a request-construction bug, not a network failure — and a
 /// [`classify`]-mapped error when reqwest rejects the assembled request.
 #[cfg(feature = "reqwest")]
-fn into_reqwest(
-    client: &reqwest::Client,
-    request: http::Request<SdkBody>,
-) -> Result<reqwest::Request, TransportError> {
+fn into_reqwest(client: &reqwest::Client, request: http::Request<SdkBody>) -> Result<reqwest::Request, TransportError> {
     let (parts, body) = request.into_parts();
     // `http::Uri` accepts a few shapes `url::Url` rejects (e.g. relative
     // ones); re-parsing keeps the failure here, with a clear kind, instead of

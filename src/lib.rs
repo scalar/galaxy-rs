@@ -49,25 +49,28 @@
 //!
 #![doc = include_str!("../README.md")]
 
+pub mod client;
 pub mod error;
+#[doc(hidden)]
+pub mod http;
+pub mod models;
+#[doc(hidden)]
+pub mod oauth;
+pub mod resources;
 pub mod transport;
 #[doc(hidden)]
 pub mod transport_reqwest;
-#[doc(hidden)]
-pub mod http;
-#[doc(hidden)]
-pub mod oauth;
-pub mod models;
-pub mod client;
-pub mod resources;
 pub mod webhooks;
 
-pub use models::{AuthenticationCreateUserBody, CelestialBody, Credentials, PaginatedResource, Planet, PlanetsUploadImageBody, PlanetsUploadImageResponse, Satellite, Token, User};
+pub use client::Environment;
 pub use client::Galaxy;
 pub use client::GalaxyBuilder;
-pub use client::Environment;
-pub use webhooks::WebhookEvent;
 pub use error::{ApiError, Error};
+pub use models::{
+    AuthenticationCreateUserBody, CelestialBody, Credentials, PaginatedResource, Planet, PlanetsUploadImageBody,
+    PlanetsUploadImageResponse, Satellite, Token, User,
+};
+pub use webhooks::WebhookEvent;
 
 /// The version of this crate, matching the published package version.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

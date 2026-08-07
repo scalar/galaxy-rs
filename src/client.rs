@@ -19,6 +19,9 @@ const DEFAULT_MAX_RETRIES: u32 = 2;
 // which buffers file parts of unbounded size (see `ClientBuilder::timeout`).
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(60);
 const USER_AGENT: &str = concat!("scalar-galaxy/", env!("CARGO_PKG_VERSION"));
+// Default `Accept` for the JSON APIs that make up almost every operation.
+// A static `HeaderValue` so the insert costs no allocation and can never fail.
+const JSON_ACCEPT: http::HeaderValue = http::HeaderValue::from_static("application/json");
 const IDEMPOTENCY_HEADER: &str = "Idempotency-Key";
 
 /// A named API environment with a preset base URL.
@@ -314,7 +317,18 @@ impl Galaxy {
         apply_auth: bool,
         overrides: RequestOverrides,
     ) -> Result<T, Error> {
-        let response = self.dispatch(method, path, query, headers, body, apply_auth, overrides, ContentEncoding::Json).await?;
+        let response = self
+            .dispatch(
+                method,
+                path,
+                query,
+                headers,
+                body,
+                apply_auth,
+                overrides,
+                ContentEncoding::Json,
+            )
+            .await?;
         crate::http::decode_json(response, self.inner.max_response_size).await
     }
 
@@ -329,7 +343,18 @@ impl Galaxy {
         apply_auth: bool,
         overrides: RequestOverrides,
     ) -> Result<(), Error> {
-        let response = self.dispatch(method, path, query, headers, body, apply_auth, overrides, ContentEncoding::Json).await?;
+        let response = self
+            .dispatch(
+                method,
+                path,
+                query,
+                headers,
+                body,
+                apply_auth,
+                overrides,
+                ContentEncoding::Json,
+            )
+            .await?;
         crate::http::decode_empty(response, self.inner.max_response_size).await
     }
 
@@ -427,7 +452,17 @@ impl Galaxy {
         apply_auth: bool,
         overrides: RequestOverrides,
     ) -> Result<http::Response<SdkBody>, Error> {
-        self.dispatch(method, path, query, headers, body, apply_auth, overrides, ContentEncoding::Json).await
+        self.dispatch(
+            method,
+            path,
+            query,
+            headers,
+            body,
+            apply_auth,
+            overrides,
+            ContentEncoding::Json,
+        )
+        .await
     }
 
     /// Assembles a request (URL, query, headers, body, auth) and sends it with retries.
@@ -478,7 +513,17 @@ impl Galaxy {
         if !header_map.contains_key(http::header::USER_AGENT) {
             header_map.insert(http::header::USER_AGENT, self.inner.user_agent.clone());
         }
-        let keyed = headers.iter().any(|(name, _)| name.eq_ignore_ascii_case(IDEMPOTENCY_HEADER));
+        // Every operation decodes JSON unless it said otherwise, so JSON is the
+        // client-wide default. Insert-if-absent, after per-request headers land,
+        // so an operation advertising a text/binary/SSE media type — or a caller
+        // default header — keeps its own value and the wire never carries two
+        // Accept fields.
+        if !header_map.contains_key(http::header::ACCEPT) {
+            header_map.insert(http::header::ACCEPT, JSON_ACCEPT);
+        }
+        let keyed = headers
+            .iter()
+            .any(|(name, _)| name.eq_ignore_ascii_case(IDEMPOTENCY_HEADER));
         // An explicit timeout applies to every request, but the *default*
         // deadline must not kill a multipart form: its file parts can be
         // arbitrarily large. The encoding tag decides, never content sniffing.
@@ -530,7 +575,9 @@ impl Galaxy {
                     }
                 }
             }
-            self.inner.auth.apply(&mut header_map, &mut url, oauth_token.as_deref())?;
+            self.inner
+                .auth
+                .apply(&mut header_map, &mut url, oauth_token.as_deref())?;
         }
         let mut request = http::Request::new(request_body);
         *request.method_mut() = method;
@@ -550,9 +597,7 @@ impl Galaxy {
         let deadline = overrides
             .timeout
             .or(self.inner.deadline)
-            .or_else(|| {
-                (default_deadline_eligible && request.body().as_bytes().is_some()).then_some(DEFAULT_TIMEOUT)
-            });
+            .or_else(|| (default_deadline_eligible && request.body().as_bytes().is_some()).then_some(DEFAULT_TIMEOUT));
         crate::http::send_with_retries(
             &*self.inner.transport,
             &*self.inner.sleep,
@@ -684,7 +729,10 @@ impl GalaxyBuilder {
     pub fn default_header(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
         let name = name.into();
         let value = value.into();
-        match (http::header::HeaderName::from_bytes(name.as_bytes()), http::HeaderValue::from_str(&value)) {
+        match (
+            http::header::HeaderName::from_bytes(name.as_bytes()),
+            http::HeaderValue::from_str(&value),
+        ) {
             (Ok(parsed_name), Ok(parsed_value)) => {
                 self.default_headers.append(parsed_name, parsed_value);
             }
@@ -778,13 +826,7 @@ impl GalaxyBuilder {
     ///
     /// An empty iterator sends no `scope` parameter at all.
     pub fn oauth_scopes(mut self, scopes: impl IntoIterator<Item = impl Into<String>>) -> Self {
-        self.oauth_scopes = Some(
-            scopes
-                .into_iter()
-                .map(Into::into)
-                .collect::<Vec<String>>()
-                .join(" "),
-        );
+        self.oauth_scopes = Some(scopes.into_iter().map(Into::into).collect::<Vec<String>>().join(" "));
         self
     }
 
@@ -846,9 +888,7 @@ impl GalaxyBuilder {
             )
         })?;
         #[cfg(feature = "tokio")]
-        let sleep: Arc<dyn Sleep> = self
-            .sleep
-            .unwrap_or_else(|| Arc::new(crate::transport::TokioSleep));
+        let sleep: Arc<dyn Sleep> = self.sleep.unwrap_or_else(|| Arc::new(crate::transport::TokioSleep));
         // Retries and request deadlines need a real timer, so a tokio-less
         // build without a caller-supplied sleeper fails loudly here instead
         // of silently dropping backoff/timeout behavior.
@@ -865,13 +905,13 @@ impl GalaxyBuilder {
                 sleep,
                 base_url,
                 auth: Auth {
-                        bearer_token: self.bearer_token,
-                        username: self.username,
-                        password: self.password,
-                        api_key_header: self.api_key_header,
-                        api_key_query: self.api_key_query,
-                        api_key_cookie: self.api_key_cookie,
-                        access_token: self.access_token,
+                    bearer_token: self.bearer_token,
+                    username: self.username,
+                    password: self.password,
+                    api_key_header: self.api_key_header,
+                    api_key_query: self.api_key_query,
+                    api_key_cookie: self.api_key_cookie,
+                    access_token: self.access_token,
                 },
                 max_retries,
                 deadline,
@@ -966,8 +1006,16 @@ fn base64_encode(input: &[u8]) -> String {
         let triple = (b0 << 16) | (b1 << 8) | b2;
         out.push(TABLE[((triple >> 18) & 0x3F) as usize] as char);
         out.push(TABLE[((triple >> 12) & 0x3F) as usize] as char);
-        out.push(if chunk.len() > 1 { TABLE[((triple >> 6) & 0x3F) as usize] as char } else { '=' });
-        out.push(if chunk.len() > 2 { TABLE[(triple & 0x3F) as usize] as char } else { '=' });
+        out.push(if chunk.len() > 1 {
+            TABLE[((triple >> 6) & 0x3F) as usize] as char
+        } else {
+            '='
+        });
+        out.push(if chunk.len() > 2 {
+            TABLE[(triple & 0x3F) as usize] as char
+        } else {
+            '='
+        });
     }
     out
 }
@@ -982,4 +1030,3 @@ fn read_env(name: &str) -> Option<String> {
         Some(trimmed.to_string())
     }
 }
-

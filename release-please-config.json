@@ -1,7 +1,10 @@
 {
   "packages": {
     ".": {
-      "release-type": "rust"
+      "release-type": "rust",
+      "extra-files": [
+        "README.md"
+      ]
     }
   },
   "bump-minor-pre-major": true,
