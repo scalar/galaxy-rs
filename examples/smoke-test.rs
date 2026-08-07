@@ -281,7 +281,11 @@ async fn main() {
 
     let passed = results.iter().filter(|result| result.status == "passed").count();
     let failed = results.iter().filter(|result| result.status == "failed").count();
-    let report = SmokeReport { total: results.len(), failed, results };
+    let report = SmokeReport {
+        total: results.len(),
+        failed,
+        results,
+    };
 
     if let Some(path) = report_path {
         let json = serde_json::to_string(&report).expect("serialize smoke report");
@@ -290,8 +294,14 @@ async fn main() {
         for result in &report.results {
             match result.status.as_str() {
                 "passed" => println!("PASS {} ({} {})", result.operation, result.method, result.path),
-                "skipped" => println!("SKIP {} ({} {}): {}", result.operation, result.method, result.path, result.error),
-                _ => eprintln!("FAIL {} ({} {})\n{}", result.operation, result.method, result.path, result.error),
+                "skipped" => println!(
+                    "SKIP {} ({} {}): {}",
+                    result.operation, result.method, result.path, result.error
+                ),
+                _ => eprintln!(
+                    "FAIL {} ({} {})\n{}",
+                    result.operation, result.method, result.path, result.error
+                ),
             }
         }
     }
@@ -309,5 +319,8 @@ async fn main() {
 /// back, which is what this smoke verifies; the synthetic response body the
 /// mock returns is not the SDK's concern.
 fn is_smoke_failure(error: &Error) -> bool {
-    matches!(error, Error::Transport(_) | Error::Config(_) | Error::MissingParameter(_))
+    matches!(
+        error,
+        Error::Transport(_) | Error::Config(_) | Error::MissingParameter(_)
+    )
 }

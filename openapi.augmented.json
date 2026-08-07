@@ -177,7 +177,7 @@
           {
             "lang": "TypeScript",
             "label": "TypeScript",
-            "source": "import Galaxy from \"@scalar/galaxy\";\n\nconst client = new Galaxy({\n  bearerAuth: process.env[\"BEARER_AUTH\"], // defaults to the BEARER_AUTH env var\n  environment: \"production\",\n});\n\nconst listAllData = await client.planets.listAllData({\n  limit: 10,\n  offset: 0,\n});\n\nconsole.log(listAllData);"
+            "source": "import Galaxy from '@scalar/galaxy';\n\nconst client = new Galaxy({\n  bearerAuth: process.env['BEARER_AUTH'], // defaults to the BEARER_AUTH env var\n  environment: 'production',\n});\n\nconst listAllData = await client.planets.listAllData({\n  limit: 10,\n  offset: 0,\n});\n\nconsole.log(listAllData);"
           },
           {
             "lang": "Python",
@@ -187,7 +187,7 @@
           {
             "lang": "Go",
             "label": "Go",
-            "source": "package main\n\nimport (\n\t\"context\"\n\t\"fmt\"\n\t\"os\"\n\n\tsdk \"scalar-galaxy\"\n\t\"scalar-galaxy/option\"\n)\n\nfunc main() {\n\tclient := sdk.NewClient(\n\t\toption.WithBearerAuth(os.Getenv(\"BEARER_AUTH\")),\n\t)\n\n\tplanet, err := client.Planets.ListAllData(context.Background(), sdk.PlanetListAllDataParams{\n\t\tLimit: sdk.F[int64](10),\n\t\tOffset: sdk.F[int64](0),\n\t})\n\tif err != nil {\n\t\tpanic(err)\n\t}\n\n\tfmt.Println(planet)\n}"
+            "source": "package main\n\nimport (\n\t\"context\"\n\t\"fmt\"\n\t\"os\"\n\n\tsdk \"scalar-galaxy\"\n\t\"scalar-galaxy/option\"\n)\n\nfunc main() {\n\tclient := sdk.NewClient(\n\t\toption.WithBearerAuth(os.Getenv(\"BEARER_AUTH\")),\n\t)\n\n\tplanet, err := client.Planets.ListAllData(context.Background(), sdk.PlanetListAllDataParams{\n\t\tLimit:  sdk.F[int64](10),\n\t\tOffset: sdk.F[int64](0),\n\t})\n\tif err != nil {\n\t\tpanic(err)\n\t}\n\n\tfmt.Println(planet)\n}"
           },
           {
             "lang": "rust",
@@ -328,7 +328,7 @@
           {
             "lang": "TypeScript",
             "label": "TypeScript",
-            "source": "import Galaxy from \"@scalar/galaxy\";\n\nconst client = new Galaxy({\n  bearerAuth: process.env[\"BEARER_AUTH\"], // defaults to the BEARER_AUTH env var\n  environment: \"production\",\n});\n\nconst planet = await client.planets.create();\n\nconsole.log(planet);"
+            "source": "import Galaxy from '@scalar/galaxy';\n\nconst client = new Galaxy({\n  bearerAuth: process.env['BEARER_AUTH'], // defaults to the BEARER_AUTH env var\n  environment: 'production',\n});\n\nconst planet = await client.planets.create();\n\nconsole.log(planet);"
           },
           {
             "lang": "Python",
@@ -338,7 +338,7 @@
           {
             "lang": "Go",
             "label": "Go",
-            "source": "package main\n\nimport (\n\t\"context\"\n\t\"fmt\"\n\t\"os\"\n\n\tsdk \"scalar-galaxy\"\n\t\"scalar-galaxy/option\"\n)\n\nfunc main() {\n\tclient := sdk.NewClient(\n\t\toption.WithBearerAuth(os.Getenv(\"BEARER_AUTH\")),\n\t)\n\n\tplanet, err := client.Planets.New(context.Background(), sdk.PlanetNewParams{\n\t\tPlanet: sdk.PlanetParam{\n\t\tName: sdk.F[string](\"Mars\"),\n\t},\n\t})\n\tif err != nil {\n\t\tpanic(err)\n\t}\n\n\tfmt.Println(planet)\n}"
+            "source": "package main\n\nimport (\n\t\"context\"\n\t\"fmt\"\n\t\"os\"\n\n\tsdk \"scalar-galaxy\"\n\t\"scalar-galaxy/option\"\n)\n\nfunc main() {\n\tclient := sdk.NewClient(\n\t\toption.WithBearerAuth(os.Getenv(\"BEARER_AUTH\")),\n\t)\n\n\tplanet, err := client.Planets.New(context.Background(), sdk.PlanetNewParams{\n\t\tPlanet: sdk.PlanetParam{\n\t\t\tName: sdk.F[string](\"Mars\"),\n\t\t},\n\t})\n\tif err != nil {\n\t\tpanic(err)\n\t}\n\n\tfmt.Println(planet)\n}"
           },
           {
             "lang": "rust",
@@ -401,7 +401,7 @@
           {
             "lang": "TypeScript",
             "label": "TypeScript",
-            "source": "import Galaxy from \"@scalar/galaxy\";\n\nconst client = new Galaxy({\n  bearerAuth: process.env[\"BEARER_AUTH\"], // defaults to the BEARER_AUTH env var\n  environment: \"production\",\n});\n\nconst planet = await client.planets.retrieve(1);\n\nconsole.log(planet);"
+            "source": "import Galaxy from '@scalar/galaxy';\n\nconst client = new Galaxy({\n  bearerAuth: process.env['BEARER_AUTH'], // defaults to the BEARER_AUTH env var\n  environment: 'production',\n});\n\nconst planet = await client.planets.retrieve(1);\n\nconsole.log(planet);"
           },
           {
             "lang": "Python",
@@ -478,7 +478,7 @@
           {
             "lang": "TypeScript",
             "label": "TypeScript",
-            "source": "import Galaxy from \"@scalar/galaxy\";\n\nconst client = new Galaxy({\n  bearerAuth: process.env[\"BEARER_AUTH\"], // defaults to the BEARER_AUTH env var\n  environment: \"production\",\n});\n\nconst planet = await client.planets.update(1);\n\nconsole.log(planet);"
+            "source": "import Galaxy from '@scalar/galaxy';\n\nconst client = new Galaxy({\n  bearerAuth: process.env['BEARER_AUTH'], // defaults to the BEARER_AUTH env var\n  environment: 'production',\n});\n\nconst planet = await client.planets.update(1);\n\nconsole.log(planet);"
           },
           {
             "lang": "Python",
@@ -488,7 +488,7 @@
           {
             "lang": "Go",
             "label": "Go",
-            "source": "package main\n\nimport (\n\t\"context\"\n\t\"fmt\"\n\t\"os\"\n\n\tsdk \"scalar-galaxy\"\n\t\"scalar-galaxy/option\"\n)\n\nfunc main() {\n\tclient := sdk.NewClient(\n\t\toption.WithBearerAuth(os.Getenv(\"BEARER_AUTH\")),\n\t)\n\n\tplanet, err := client.Planets.Update(context.Background(), 1, sdk.PlanetUpdateParams{\n\t\tPlanet: sdk.PlanetParam{\n\t\tName: sdk.F[string](\"Mars\"),\n\t},\n\t})\n\tif err != nil {\n\t\tpanic(err)\n\t}\n\n\tfmt.Println(planet)\n}"
+            "source": "package main\n\nimport (\n\t\"context\"\n\t\"fmt\"\n\t\"os\"\n\n\tsdk \"scalar-galaxy\"\n\t\"scalar-galaxy/option\"\n)\n\nfunc main() {\n\tclient := sdk.NewClient(\n\t\toption.WithBearerAuth(os.Getenv(\"BEARER_AUTH\")),\n\t)\n\n\tplanet, err := client.Planets.Update(context.Background(), 1, sdk.PlanetUpdateParams{\n\t\tPlanet: sdk.PlanetParam{\n\t\t\tName: sdk.F[string](\"Mars\"),\n\t\t},\n\t})\n\tif err != nil {\n\t\tpanic(err)\n\t}\n\n\tfmt.Println(planet)\n}"
           },
           {
             "lang": "rust",
@@ -523,7 +523,7 @@
           {
             "lang": "TypeScript",
             "label": "TypeScript",
-            "source": "import Galaxy from \"@scalar/galaxy\";\n\nconst client = new Galaxy({\n  bearerAuth: process.env[\"BEARER_AUTH\"], // defaults to the BEARER_AUTH env var\n  environment: \"production\",\n});\n\nawait client.planets.delete(1);"
+            "source": "import Galaxy from '@scalar/galaxy';\n\nconst client = new Galaxy({\n  bearerAuth: process.env['BEARER_AUTH'], // defaults to the BEARER_AUTH env var\n  environment: 'production',\n});\n\nawait client.planets.delete(1);"
           },
           {
             "lang": "Python",
@@ -596,7 +596,7 @@
           {
             "lang": "TypeScript",
             "label": "TypeScript",
-            "source": "import Galaxy from \"@scalar/galaxy\";\n\nconst client = new Galaxy({\n  bearerAuth: process.env[\"BEARER_AUTH\"], // defaults to the BEARER_AUTH env var\n  environment: \"production\",\n});\n\nconst uploadImage = await client.planets.uploadImage(1);\n\nconsole.log(uploadImage);"
+            "source": "import Galaxy from '@scalar/galaxy';\n\nconst client = new Galaxy({\n  bearerAuth: process.env['BEARER_AUTH'], // defaults to the BEARER_AUTH env var\n  environment: 'production',\n});\n\nconst uploadImage = await client.planets.uploadImage(1);\n\nconsole.log(uploadImage);"
           },
           {
             "lang": "Python",
@@ -652,7 +652,7 @@
           {
             "lang": "TypeScript",
             "label": "TypeScript",
-            "source": "import Galaxy from \"@scalar/galaxy\";\n\nconst client = new Galaxy({\n  bearerAuth: process.env[\"BEARER_AUTH\"], // defaults to the BEARER_AUTH env var\n  environment: \"production\",\n});\n\nconst celestialBody = await client.celestialBodies.create({\n  name: \"Mars\",\n});\n\nconsole.log(celestialBody);"
+            "source": "import Galaxy from '@scalar/galaxy';\n\nconst client = new Galaxy({\n  bearerAuth: process.env['BEARER_AUTH'], // defaults to the BEARER_AUTH env var\n  environment: 'production',\n});\n\nconst celestialBody = await client.celestialBodies.create({\n  name: 'Mars',\n});\n\nconsole.log(celestialBody);"
           },
           {
             "lang": "Python",
@@ -662,7 +662,7 @@
           {
             "lang": "Go",
             "label": "Go",
-            "source": "package main\n\nimport (\n\t\"context\"\n\t\"fmt\"\n\t\"os\"\n\n\tsdk \"scalar-galaxy\"\n\t\"scalar-galaxy/option\"\n)\n\nfunc main() {\n\tclient := sdk.NewClient(\n\t\toption.WithBearerAuth(os.Getenv(\"BEARER_AUTH\")),\n\t)\n\n\tcelestialBody, err := client.CelestialBodies.New(context.Background(), sdk.CelestialBodyNewParams{\n\t\tCelestialBody: sdk.PlanetParam{\n\t\tName: sdk.F[string](\"Mars\"),\n\t},\n\t})\n\tif err != nil {\n\t\tpanic(err)\n\t}\n\n\tfmt.Println(celestialBody)\n}"
+            "source": "package main\n\nimport (\n\t\"context\"\n\t\"fmt\"\n\t\"os\"\n\n\tsdk \"scalar-galaxy\"\n\t\"scalar-galaxy/option\"\n)\n\nfunc main() {\n\tclient := sdk.NewClient(\n\t\toption.WithBearerAuth(os.Getenv(\"BEARER_AUTH\")),\n\t)\n\n\tcelestialBody, err := client.CelestialBodies.New(context.Background(), sdk.CelestialBodyNewParams{\n\t\tCelestialBody: sdk.PlanetParam{\n\t\t\tName: sdk.F[string](\"Mars\"),\n\t\t},\n\t})\n\tif err != nil {\n\t\tpanic(err)\n\t}\n\n\tfmt.Println(celestialBody)\n}"
           }
         ]
       }
@@ -799,7 +799,7 @@
           {
             "lang": "TypeScript",
             "label": "TypeScript",
-            "source": "import Galaxy from \"@scalar/galaxy\";\n\nconst client = new Galaxy({\n  bearerAuth: process.env[\"BEARER_AUTH\"], // defaults to the BEARER_AUTH env var\n  environment: \"production\",\n});\n\nconst user = await client.authentication.createUser();\n\nconsole.log(user);"
+            "source": "import Galaxy from '@scalar/galaxy';\n\nconst client = new Galaxy({\n  bearerAuth: process.env['BEARER_AUTH'], // defaults to the BEARER_AUTH env var\n  environment: 'production',\n});\n\nconst user = await client.authentication.createUser();\n\nconsole.log(user);"
           },
           {
             "lang": "Python",
@@ -809,7 +809,7 @@
           {
             "lang": "Go",
             "label": "Go",
-            "source": "package main\n\nimport (\n\t\"context\"\n\t\"fmt\"\n\t\"os\"\n\n\tsdk \"scalar-galaxy\"\n\t\"scalar-galaxy/option\"\n)\n\nfunc main() {\n\tclient := sdk.NewClient(\n\t\toption.WithBearerAuth(os.Getenv(\"BEARER_AUTH\")),\n\t)\n\n\tauthentication, err := client.Authentication.NewUser(context.Background(), sdk.AuthenticationNewUserParams{\n\t\tEmail: sdk.F[string](\"marc@scalar.com\"),\n\t\tPassword: sdk.F[string](\"i-love-scalar\"),\n\t\tName: sdk.F[string](\"Marc\"),\n\t})\n\tif err != nil {\n\t\tpanic(err)\n\t}\n\n\tfmt.Println(authentication)\n}"
+            "source": "package main\n\nimport (\n\t\"context\"\n\t\"fmt\"\n\t\"os\"\n\n\tsdk \"scalar-galaxy\"\n\t\"scalar-galaxy/option\"\n)\n\nfunc main() {\n\tclient := sdk.NewClient(\n\t\toption.WithBearerAuth(os.Getenv(\"BEARER_AUTH\")),\n\t)\n\n\tauthentication, err := client.Authentication.NewUser(context.Background(), sdk.AuthenticationNewUserParams{\n\t\tEmail:    sdk.F[string](\"marc@scalar.com\"),\n\t\tPassword: sdk.F[string](\"i-love-scalar\"),\n\t\tName:     sdk.F[string](\"Marc\"),\n\t})\n\tif err != nil {\n\t\tpanic(err)\n\t}\n\n\tfmt.Println(authentication)\n}"
           },
           {
             "lang": "rust",
@@ -891,7 +891,7 @@
           {
             "lang": "TypeScript",
             "label": "TypeScript",
-            "source": "import Galaxy from \"@scalar/galaxy\";\n\nconst client = new Galaxy({\n  bearerAuth: process.env[\"BEARER_AUTH\"], // defaults to the BEARER_AUTH env var\n  environment: \"production\",\n});\n\nconst createToken = await client.authentication.createToken();\n\nconsole.log(createToken);"
+            "source": "import Galaxy from '@scalar/galaxy';\n\nconst client = new Galaxy({\n  bearerAuth: process.env['BEARER_AUTH'], // defaults to the BEARER_AUTH env var\n  environment: 'production',\n});\n\nconst createToken = await client.authentication.createToken();\n\nconsole.log(createToken);"
           },
           {
             "lang": "Python",
@@ -901,7 +901,7 @@
           {
             "lang": "Go",
             "label": "Go",
-            "source": "package main\n\nimport (\n\t\"context\"\n\t\"fmt\"\n\t\"os\"\n\n\tsdk \"scalar-galaxy\"\n\t\"scalar-galaxy/option\"\n)\n\nfunc main() {\n\tclient := sdk.NewClient(\n\t\toption.WithBearerAuth(os.Getenv(\"BEARER_AUTH\")),\n\t)\n\n\tauthentication, err := client.Authentication.NewToken(context.Background(), sdk.AuthenticationNewTokenParams{\n\t\tCredentials: sdk.CredentialsParam{\n\t\tEmail: sdk.F[string](\"marc@scalar.com\"),\n\t\tPassword: sdk.F[string](\"i-love-scalar\"),\n\t},\n\t})\n\tif err != nil {\n\t\tpanic(err)\n\t}\n\n\tfmt.Println(authentication)\n}"
+            "source": "package main\n\nimport (\n\t\"context\"\n\t\"fmt\"\n\t\"os\"\n\n\tsdk \"scalar-galaxy\"\n\t\"scalar-galaxy/option\"\n)\n\nfunc main() {\n\tclient := sdk.NewClient(\n\t\toption.WithBearerAuth(os.Getenv(\"BEARER_AUTH\")),\n\t)\n\n\tauthentication, err := client.Authentication.NewToken(context.Background(), sdk.AuthenticationNewTokenParams{\n\t\tCredentials: sdk.CredentialsParam{\n\t\t\tEmail:    sdk.F[string](\"marc@scalar.com\"),\n\t\t\tPassword: sdk.F[string](\"i-love-scalar\"),\n\t\t},\n\t})\n\tif err != nil {\n\t\tpanic(err)\n\t}\n\n\tfmt.Println(authentication)\n}"
           },
           {
             "lang": "rust",
@@ -984,7 +984,7 @@
           {
             "lang": "TypeScript",
             "label": "TypeScript",
-            "source": "import Galaxy from \"@scalar/galaxy\";\n\nconst client = new Galaxy({\n  bearerAuth: process.env[\"BEARER_AUTH\"], // defaults to the BEARER_AUTH env var\n  environment: \"production\",\n});\n\nconst user = await client.authentication.listMe();\n\nconsole.log(user);"
+            "source": "import Galaxy from '@scalar/galaxy';\n\nconst client = new Galaxy({\n  bearerAuth: process.env['BEARER_AUTH'], // defaults to the BEARER_AUTH env var\n  environment: 'production',\n});\n\nconst user = await client.authentication.listMe();\n\nconsole.log(user);"
           },
           {
             "lang": "Python",

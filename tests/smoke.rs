@@ -133,5 +133,8 @@ async fn smoke() {
 /// back, which is what this smoke verifies; the response body itself is the
 /// server's concern, not the SDK's.
 fn is_smoke_failure(error: &Error) -> bool {
-    matches!(error, Error::Transport(_) | Error::Config(_) | Error::MissingParameter(_))
+    matches!(
+        error,
+        Error::Transport(_) | Error::Config(_) | Error::MissingParameter(_)
+    )
 }

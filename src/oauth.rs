@@ -110,7 +110,9 @@ impl TokenProvider {
         scope: &str,
     ) -> Self {
         Self {
-            token_url: base_url.join(token_url).map_or_else(|_| token_url.to_string(), String::from),
+            token_url: base_url
+                .join(token_url)
+                .map_or_else(|_| token_url.to_string(), String::from),
             client_id,
             client_secret,
             scope: scope.to_string(),
@@ -278,8 +280,16 @@ fn base64_encode(input: &[u8]) -> String {
         let triple = (b0 << 16) | (b1 << 8) | b2;
         out.push(TABLE[((triple >> 18) & 0x3F) as usize] as char);
         out.push(TABLE[((triple >> 12) & 0x3F) as usize] as char);
-        out.push(if chunk.len() > 1 { TABLE[((triple >> 6) & 0x3F) as usize] as char } else { '=' });
-        out.push(if chunk.len() > 2 { TABLE[(triple & 0x3F) as usize] as char } else { '=' });
+        out.push(if chunk.len() > 1 {
+            TABLE[((triple >> 6) & 0x3F) as usize] as char
+        } else {
+            '='
+        });
+        out.push(if chunk.len() > 2 {
+            TABLE[(triple & 0x3F) as usize] as char
+        } else {
+            '='
+        });
     }
     out
 }
@@ -302,7 +312,12 @@ mod tests {
     impl ScriptedTransport {
         fn new(responses: Vec<(u16, &str)>) -> Self {
             Self {
-                responses: Mutex::new(responses.into_iter().map(|(status, body)| (status, body.to_string())).collect()),
+                responses: Mutex::new(
+                    responses
+                        .into_iter()
+                        .map(|(status, body)| (status, body.to_string()))
+                        .collect(),
+                ),
                 calls: AtomicUsize::new(0),
             }
         }
@@ -456,7 +471,11 @@ mod tests {
         assert_eq!(a.expect("token a"), "shared");
         assert_eq!(b.expect("token b"), "shared");
         assert_eq!(c.expect("token c"), "shared");
-        assert_eq!(transport.calls(), 1, "concurrent callers must not stampede the endpoint");
+        assert_eq!(
+            transport.calls(),
+            1,
+            "concurrent callers must not stampede the endpoint"
+        );
     }
 
     /// A rejected exchange surfaces as an API error and is not cached.

@@ -96,7 +96,10 @@ impl CreateUserRequest {
             headers.push(("Idempotency-Key".to_string(), key));
         }
         let body = self.body.as_ref();
-        let overrides = crate::client::RequestOverrides { timeout: self.timeout, max_retries: self.max_retries };
+        let overrides = crate::client::RequestOverrides {
+            timeout: self.timeout,
+            max_retries: self.max_retries,
+        };
         self.client
             .send::<crate::models::User, _>(http::Method::POST, &path, &query, &headers, body, true, overrides)
             .await
@@ -171,7 +174,10 @@ impl CreateTokenRequest {
             headers.push(("Idempotency-Key".to_string(), key));
         }
         let body = self.body.as_ref();
-        let overrides = crate::client::RequestOverrides { timeout: self.timeout, max_retries: self.max_retries };
+        let overrides = crate::client::RequestOverrides {
+            timeout: self.timeout,
+            max_retries: self.max_retries,
+        };
         self.client
             .send::<crate::models::Token, _>(http::Method::POST, &path, &query, &headers, body, true, overrides)
             .await
@@ -227,7 +233,10 @@ impl ListMeRequest {
         let query: Vec<(String, String)> = Vec::new();
         let headers: Vec<(String, String)> = Vec::new();
         let body: Option<&serde_json::Value> = None;
-        let overrides = crate::client::RequestOverrides { timeout: self.timeout, max_retries: self.max_retries };
+        let overrides = crate::client::RequestOverrides {
+            timeout: self.timeout,
+            max_retries: self.max_retries,
+        };
         self.client
             .send::<crate::models::User, _>(http::Method::GET, &path, &query, &headers, body, true, overrides)
             .await

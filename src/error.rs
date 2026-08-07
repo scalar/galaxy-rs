@@ -146,7 +146,14 @@ impl ApiError {
         } else {
             None
         };
-        Self { status, headers, request_id, body, raw, truncated }
+        Self {
+            status,
+            headers,
+            request_id,
+            body,
+            raw,
+            truncated,
+        }
     }
 
     /// Deserializes the response body into a typed value, when present.
@@ -156,7 +163,9 @@ impl ApiError {
     /// `if let Some(problem) = err.body_as::<ErrorModel>() { … }`. Returns `None`
     /// when there is no body or it does not match `T`.
     pub fn body_as<T: serde::de::DeserializeOwned>(&self) -> Option<T> {
-        self.body.as_ref().and_then(|body| serde_json::from_value(body.clone()).ok())
+        self.body
+            .as_ref()
+            .and_then(|body| serde_json::from_value(body.clone()).ok())
     }
 
     /// Whether the status is in the 4xx client-error range.
@@ -185,7 +194,10 @@ impl std::fmt::Debug for ApiError {
             .field("request_id", &self.request_id)
             // Serializing `body` just to measure it is fine here: Debug
             // formatting is a cold error-reporting path.
-            .field("body", &BodySummary(self.body.as_ref().map(|body| body.to_string().len())))
+            .field(
+                "body",
+                &BodySummary(self.body.as_ref().map(|body| body.to_string().len())),
+            )
             .field("raw", &BodySummary(self.raw.as_ref().map(String::len)))
             .field("truncated", &self.truncated)
             .finish()
@@ -233,8 +245,13 @@ impl std::fmt::Debug for RedactedHeaders<'_> {
 /// takeover. `HeaderName::as_str` is guaranteed lowercase, so the comparisons
 /// are case-insensitive without an explicit fold.
 fn is_sensitive_header(name: &http::header::HeaderName) -> bool {
-    const DENYLIST: [&str; 5] =
-        ["set-cookie", "www-authenticate", "proxy-authenticate", "authorization", "proxy-authorization"];
+    const DENYLIST: [&str; 5] = [
+        "set-cookie",
+        "www-authenticate",
+        "proxy-authenticate",
+        "authorization",
+        "proxy-authorization",
+    ];
     let name = name.as_str();
     DENYLIST.contains(&name)
         || name.contains("token")
@@ -268,12 +285,18 @@ mod tests {
 
     #[test]
     fn redact_url_truncates_query_strings() {
-        assert_eq!(redact_url("https://api.example.com/v1/items?api_key=secret&page=2"), "https://api.example.com/v1/items?…");
+        assert_eq!(
+            redact_url("https://api.example.com/v1/items?api_key=secret&page=2"),
+            "https://api.example.com/v1/items?…"
+        );
     }
 
     #[test]
     fn redact_url_leaves_query_free_urls_untouched() {
-        assert_eq!(redact_url("https://api.example.com/v1/items"), "https://api.example.com/v1/items");
+        assert_eq!(
+            redact_url("https://api.example.com/v1/items"),
+            "https://api.example.com/v1/items"
+        );
     }
 
     #[test]
@@ -281,13 +304,25 @@ mod tests {
         // `{err:?}` is how errors idiomatically reach logs; a session cookie or
         // token header value must never survive into that output.
         let mut headers = http::HeaderMap::new();
-        headers.insert(http::header::SET_COOKIE, "session=super-secret-session".parse().expect("valid header value"));
+        headers.insert(
+            http::header::SET_COOKIE,
+            "session=super-secret-session".parse().expect("valid header value"),
+        );
         headers.insert("x-api-token", "tok_123".parse().expect("valid header value"));
-        headers.insert(http::header::WWW_AUTHENTICATE, "Bearer realm=\"api\"".parse().expect("valid header value"));
-        headers.insert(http::header::CONTENT_TYPE, "application/json".parse().expect("valid header value"));
+        headers.insert(
+            http::header::WWW_AUTHENTICATE,
+            "Bearer realm=\"api\"".parse().expect("valid header value"),
+        );
+        headers.insert(
+            http::header::CONTENT_TYPE,
+            "application/json".parse().expect("valid header value"),
+        );
         let error = ApiError::from_parts(401, headers, None, b"", false);
         let rendered = format!("{error:?}");
-        assert!(!rendered.contains("super-secret-session"), "set-cookie leaked: {rendered}");
+        assert!(
+            !rendered.contains("super-secret-session"),
+            "set-cookie leaked: {rendered}"
+        );
         assert!(!rendered.contains("tok_123"), "token header leaked: {rendered}");
         assert!(!rendered.contains("realm"), "auth challenge leaked: {rendered}");
         assert!(rendered.contains("<redacted>"), "redaction marker missing: {rendered}");
@@ -299,18 +334,34 @@ mod tests {
     fn debug_summarizes_bodies_instead_of_printing_them() {
         // Error bodies routinely carry session tokens or OAuth error payloads;
         // `{err:?}` must show only their size, never their contents.
-        let json_error =
-            ApiError::from_parts(400, http::HeaderMap::new(), None, br#"{"access_token":"tok_body_secret"}"#, false);
+        let json_error = ApiError::from_parts(
+            400,
+            http::HeaderMap::new(),
+            None,
+            br#"{"access_token":"tok_body_secret"}"#,
+            false,
+        );
         let rendered = format!("{json_error:?}");
         assert!(!rendered.contains("tok_body_secret"), "JSON body leaked: {rendered}");
-        assert!(rendered.contains("body: Some(<"), "body size summary missing: {rendered}");
+        assert!(
+            rendered.contains("body: Some(<"),
+            "body size summary missing: {rendered}"
+        );
         assert!(rendered.contains("raw: None"), "raw should be None: {rendered}");
 
         // A non-JSON body lands in `raw` and must be summarized the same way.
-        let raw_error =
-            ApiError::from_parts(502, http::HeaderMap::new(), None, b"<html>token=tok_raw_secret</html>", false);
+        let raw_error = ApiError::from_parts(
+            502,
+            http::HeaderMap::new(),
+            None,
+            b"<html>token=tok_raw_secret</html>",
+            false,
+        );
         let rendered = format!("{raw_error:?}");
         assert!(!rendered.contains("tok_raw_secret"), "raw body leaked: {rendered}");
-        assert!(rendered.contains("raw: Some(<33 bytes>)"), "raw size summary missing: {rendered}");
+        assert!(
+            rendered.contains("raw: Some(<33 bytes>)"),
+            "raw size summary missing: {rendered}"
+        );
     }
 }

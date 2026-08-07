@@ -4,7 +4,7 @@
 use serde::{Deserialize, Serialize};
 
 /// A user
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct User {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub id: Option<i64>,
@@ -98,6 +98,32 @@ pub struct Planet {
     pub failure_callback_url: Option<String>,
 }
 
+impl Planet {
+    /// Creates a new `Planet` from its required fields, leaving every optional one unset.
+    ///
+    /// Pair it with struct-update syntax to set only the optionals you need:
+    /// `Planet { description: Some(…), ..Planet::new(id, name) }`.
+    pub fn new(id: i64, name: impl Into<String>) -> Self {
+        Self {
+            id,
+            name: name.into(),
+            description: None,
+            r#type: String::new(),
+            habitability_index: None,
+            physical_properties: None,
+            atmosphere: None,
+            discovered_at: None,
+            image: None,
+            satellites: None,
+            creator: None,
+            tags: None,
+            last_updated: None,
+            success_callback_url: None,
+            failure_callback_url: None,
+        }
+    }
+}
+
 /// Every satellite in the Scalar Galaxy
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Satellite {
@@ -113,6 +139,23 @@ pub struct Satellite {
     pub r#type: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub orbit: Option<serde_json::Value>,
+}
+
+impl Satellite {
+    /// Creates a new `Satellite` from its required fields, leaving every optional one unset.
+    ///
+    /// Pair it with struct-update syntax to set only the optionals you need:
+    /// `Satellite { id: Some(…), ..Satellite::new(name) }`.
+    pub fn new(name: impl Into<String>) -> Self {
+        Self {
+            id: None,
+            name: name.into(),
+            description: None,
+            diameter: None,
+            r#type: String::new(),
+            orbit: None,
+        }
+    }
 }
 
 /// A generic paginated resource. Specializing schemas bind the item type by declaring a `$dynamicAnchor` named `itemType`, the JSON Schema 2020-12 way to express `PaginatedResource<T>`.
@@ -150,7 +193,7 @@ pub struct PlanetsUploadImageResponse {
     pub mime_type: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct PlanetsUploadImageBody {
     /// The image file to upload
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -165,4 +208,19 @@ pub struct AuthenticationCreateUserBody {
     pub name: Option<String>,
     pub email: String,
     pub password: String,
+}
+
+impl AuthenticationCreateUserBody {
+    /// Creates a new `AuthenticationCreateUserBody` from its required fields, leaving every optional one unset.
+    ///
+    /// Pair it with struct-update syntax to set only the optionals you need:
+    /// `AuthenticationCreateUserBody { id: Some(…), ..AuthenticationCreateUserBody::new(email, password) }`.
+    pub fn new(email: impl Into<String>, password: impl Into<String>) -> Self {
+        Self {
+            id: None,
+            name: None,
+            email: email.into(),
+            password: password.into(),
+        }
+    }
 }

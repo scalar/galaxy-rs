@@ -17,7 +17,7 @@ impl WebhookEvent {
     /// (typically in a request header); `payload` is the raw JSON body.
     pub fn parse(event_type: &str, payload: &[u8]) -> Result<Self, Error> {
         match event_type {
-        "newPlanet" => Ok(Self::Unwrap(serde_json::from_slice(payload)?)),
+            "newPlanet" => Ok(Self::Unwrap(serde_json::from_slice(payload)?)),
             other => Err(Error::Config(format!("unrecognized webhook event type: {other}"))),
         }
     }
