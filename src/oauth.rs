@@ -188,12 +188,21 @@ impl TokenProvider {
         deadline: Option<Duration>,
         max_response_size: usize,
     ) -> Result<CachedToken, Error> {
-        let mut form = url::form_urlencoded::Serializer::new(String::new());
-        form.append_pair("grant_type", "client_credentials");
-        if !self.scope.is_empty() {
-            form.append_pair("scope", &self.scope);
-        }
-        let body = form.finish();
+        // Scoped so the serializer is dropped before the `.await` below.
+        // `url::form_urlencoded::Serializer` is not `Send`, and a binding that
+        // merely stops being *used* is still held across an await point — which
+        // would make this future non-`Send`. Pagination requires exactly that
+        // bound (`PageFuture` is `Pin<Box<dyn Future + Send>>`), so without the
+        // block an SDK with both OAuth client-credentials and a paginated
+        // operation fails to compile.
+        let body = {
+            let mut form = url::form_urlencoded::Serializer::new(String::new());
+            form.append_pair("grant_type", "client_credentials");
+            if !self.scope.is_empty() {
+                form.append_pair("scope", &self.scope);
+            }
+            form.finish()
+        };
 
         let mut request = http::Request::new(SdkBody::from_bytes(body.into_bytes()));
         *request.method_mut() = http::Method::POST;

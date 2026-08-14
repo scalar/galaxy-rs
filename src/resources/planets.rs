@@ -416,8 +416,7 @@ impl DeleteRequest {
             crate::http::encode_path_param(&crate::http::scalar_value(&self.planet_id))
         );
         let query: Vec<(String, String)> = Vec::new();
-        let mut headers: Vec<(String, String)> = Vec::new();
-        headers.push(("Accept".to_string(), "*/*".to_string()));
+        let mut headers: Vec<(String, String)> = vec![("Accept".to_string(), "*/*".to_string())];
         if let Some(key) = self.idempotency_key {
             headers.push(("Idempotency-Key".to_string(), key));
         }

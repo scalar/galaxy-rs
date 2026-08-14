@@ -41,7 +41,7 @@ It's easy to say you know them all, but do you really? Retrieve all the planets 
 
 | Direction | Type |
 | --- | --- |
-| Response | [`PaginatedResource`](./src/models.rs) |
+| Response | [`PaginatedResource`](./src/models/planets.rs) |
 
 ```rust
 let response = client.planets().list_all_data().send().await?;
@@ -53,8 +53,8 @@ Time to play god and create a new planet. What do you think? Ah, don't think too
 
 | Direction | Type |
 | --- | --- |
-| Request | [`Planet`](./src/models.rs) |
-| Response | [`Planet`](./src/models.rs) |
+| Request | [`Planet`](./src/models/planets.rs) |
+| Response | [`Planet`](./src/models/planets.rs) |
 
 ```rust
 let response = client.planets().create().send().await?;
@@ -66,7 +66,7 @@ You'll better learn a little bit more about the planets. It might come in handy 
 
 | Direction | Type |
 | --- | --- |
-| Response | [`Planet`](./src/models.rs) |
+| Response | [`Planet`](./src/models/planets.rs) |
 
 ```rust
 let response = client.planets().retrieve(1).send().await?;
@@ -78,8 +78,8 @@ Sometimes you make mistakes, that's fine. No worries, you can update all planets
 
 | Direction | Type |
 | --- | --- |
-| Request | [`Planet`](./src/models.rs) |
-| Response | [`Planet`](./src/models.rs) |
+| Request | [`Planet`](./src/models/planets.rs) |
+| Response | [`Planet`](./src/models/planets.rs) |
 
 ```rust
 let response = client.planets().update(1).send().await?;
@@ -103,7 +103,7 @@ Got a crazy good photo of a planet? Share it with the world!
 
 | Direction | Type |
 | --- | --- |
-| Response | [`PlanetsUploadImageResponse`](./src/models.rs) |
+| Response | [`PlanetsUploadImageResponse`](./src/models/planets.rs) |
 
 ```rust
 let response = client.planets().upload_image(1).send().await?;
@@ -117,8 +117,8 @@ Stars, moons, comets, the occasional rogue asteroid — if it glows or drifts th
 
 | Direction | Type |
 | --- | --- |
-| Request | [`CelestialBody`](./src/models.rs) |
-| Response | [`CelestialBody`](./src/models.rs) |
+| Request | [`CelestialBody`](./src/models/celestial_bodies.rs) |
+| Response | [`CelestialBody`](./src/models/celestial_bodies.rs) |
 
 ## `Authentication`
 
@@ -128,8 +128,8 @@ Time to create a user account, eh?
 
 | Direction | Type |
 | --- | --- |
-| Request | [`AuthenticationCreateUserBody`](./src/models.rs) |
-| Response | [`User`](./src/models.rs) |
+| Request | [`AuthenticationCreateUserBody`](./src/models/authentication.rs) |
+| Response | [`User`](./src/models/authentication.rs) |
 
 ```rust
 let response = client.authentication().create_user().send().await?;
@@ -141,8 +141,8 @@ Yeah, this is the boring security stuff. Just get your super secret token and mo
 
 | Direction | Type |
 | --- | --- |
-| Request | [`Credentials`](./src/models.rs) |
-| Response | [`Token`](./src/models.rs) |
+| Request | [`Credentials`](./src/models/authentication.rs) |
+| Response | [`Token`](./src/models/authentication.rs) |
 
 ```rust
 let response = client.authentication().create_token().send().await?;
@@ -154,7 +154,7 @@ Find yourself they say. That's what you can do here.
 
 | Direction | Type |
 | --- | --- |
-| Response | [`User`](./src/models.rs) |
+| Response | [`User`](./src/models/authentication.rs) |
 
 ```rust
 let response = client.authentication().list_me().send().await?;

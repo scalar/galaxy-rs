@@ -192,7 +192,7 @@
           {
             "lang": "rust",
             "label": "Rust",
-            "source": "use scalar_galaxy::*;\n\n#[tokio::main]\nasync fn main() -> Result<(), Box<dyn std::error::Error>> {\n    let client = Galaxy::builder()\n        .bearer_token(std::env::var(\"SCALAR_BEARER_TOKEN\")?)\n        .build()?;\n\n    let response = client.planets().list_all_data().send().await?;\n\n    println!(\"{:?}\", response);\n\n    Ok(())\n}"
+            "source": "use scalar_galaxy::*;\n\n#[tokio::main]\nasync fn main() -> Result<(), Box<dyn std::error::Error>> {\n    let client = Galaxy::builder().bearer_auth(std::env::var(\"BEARER_AUTH\")?).build()?;\n\n    let response = client.planets().list_all_data().send().await?;\n\n    println!(\"{:?}\", response);\n\n    Ok(())\n}"
           }
         ]
       },
@@ -343,7 +343,7 @@
           {
             "lang": "rust",
             "label": "Rust",
-            "source": "use scalar_galaxy::*;\n\n#[tokio::main]\nasync fn main() -> Result<(), Box<dyn std::error::Error>> {\n    let client = Galaxy::builder()\n        .bearer_token(std::env::var(\"SCALAR_BEARER_TOKEN\")?)\n        .build()?;\n\n    let response = client.planets().create().send().await?;\n\n    println!(\"{:?}\", response);\n\n    Ok(())\n}"
+            "source": "use scalar_galaxy::*;\n\n#[tokio::main]\nasync fn main() -> Result<(), Box<dyn std::error::Error>> {\n    let client = Galaxy::builder().bearer_auth(std::env::var(\"BEARER_AUTH\")?).build()?;\n\n    let response = client.planets().create().send().await?;\n\n    println!(\"{:?}\", response);\n\n    Ok(())\n}"
           }
         ]
       }
@@ -416,7 +416,7 @@
           {
             "lang": "rust",
             "label": "Rust",
-            "source": "use scalar_galaxy::*;\n\n#[tokio::main]\nasync fn main() -> Result<(), Box<dyn std::error::Error>> {\n    let client = Galaxy::builder()\n        .bearer_token(std::env::var(\"SCALAR_BEARER_TOKEN\")?)\n        .build()?;\n\n    let response = client.planets().retrieve(1).send().await?;\n\n    println!(\"{:?}\", response);\n\n    Ok(())\n}"
+            "source": "use scalar_galaxy::*;\n\n#[tokio::main]\nasync fn main() -> Result<(), Box<dyn std::error::Error>> {\n    let client = Galaxy::builder().bearer_auth(std::env::var(\"BEARER_AUTH\")?).build()?;\n\n    let response = client.planets().retrieve(1).send().await?;\n\n    println!(\"{:?}\", response);\n\n    Ok(())\n}"
           }
         ]
       },
@@ -493,7 +493,7 @@
           {
             "lang": "rust",
             "label": "Rust",
-            "source": "use scalar_galaxy::*;\n\n#[tokio::main]\nasync fn main() -> Result<(), Box<dyn std::error::Error>> {\n    let client = Galaxy::builder()\n        .bearer_token(std::env::var(\"SCALAR_BEARER_TOKEN\")?)\n        .build()?;\n\n    let response = client.planets().update(1).send().await?;\n\n    println!(\"{:?}\", response);\n\n    Ok(())\n}"
+            "source": "use scalar_galaxy::*;\n\n#[tokio::main]\nasync fn main() -> Result<(), Box<dyn std::error::Error>> {\n    let client = Galaxy::builder().bearer_auth(std::env::var(\"BEARER_AUTH\")?).build()?;\n\n    let response = client.planets().update(1).send().await?;\n\n    println!(\"{:?}\", response);\n\n    Ok(())\n}"
           }
         ]
       },
@@ -538,7 +538,7 @@
           {
             "lang": "rust",
             "label": "Rust",
-            "source": "use scalar_galaxy::*;\n\n#[tokio::main]\nasync fn main() -> Result<(), Box<dyn std::error::Error>> {\n    let client = Galaxy::builder()\n        .bearer_token(std::env::var(\"SCALAR_BEARER_TOKEN\")?)\n        .build()?;\n\n    client.planets().delete(1).send().await?;\n\n    Ok(())\n}"
+            "source": "use scalar_galaxy::*;\n\n#[tokio::main]\nasync fn main() -> Result<(), Box<dyn std::error::Error>> {\n    let client = Galaxy::builder().bearer_auth(std::env::var(\"BEARER_AUTH\")?).build()?;\n\n    client.planets().delete(1).send().await?;\n\n    Ok(())\n}"
           }
         ]
       }
@@ -611,7 +611,7 @@
           {
             "lang": "rust",
             "label": "Rust",
-            "source": "use scalar_galaxy::*;\n\n#[tokio::main]\nasync fn main() -> Result<(), Box<dyn std::error::Error>> {\n    let client = Galaxy::builder()\n        .bearer_token(std::env::var(\"SCALAR_BEARER_TOKEN\")?)\n        .build()?;\n\n    let response = client.planets().upload_image(1).send().await?;\n\n    println!(\"{:?}\", response);\n\n    Ok(())\n}"
+            "source": "use scalar_galaxy::*;\n\n#[tokio::main]\nasync fn main() -> Result<(), Box<dyn std::error::Error>> {\n    let client = Galaxy::builder().bearer_auth(std::env::var(\"BEARER_AUTH\")?).build()?;\n\n    let response = client.planets().upload_image(1).send().await?;\n\n    println!(\"{:?}\", response);\n\n    Ok(())\n}"
           }
         ]
       }
@@ -814,7 +814,7 @@
           {
             "lang": "rust",
             "label": "Rust",
-            "source": "use scalar_galaxy::*;\n\n#[tokio::main]\nasync fn main() -> Result<(), Box<dyn std::error::Error>> {\n    let client = Galaxy::builder()\n        .bearer_token(std::env::var(\"SCALAR_BEARER_TOKEN\")?)\n        .build()?;\n\n    let response = client.authentication().create_user().send().await?;\n\n    println!(\"{:?}\", response);\n\n    Ok(())\n}"
+            "source": "use scalar_galaxy::*;\n\n#[tokio::main]\nasync fn main() -> Result<(), Box<dyn std::error::Error>> {\n    let client = Galaxy::builder().bearer_auth(std::env::var(\"BEARER_AUTH\")?).build()?;\n\n    let response = client.authentication().create_user().send().await?;\n\n    println!(\"{:?}\", response);\n\n    Ok(())\n}"
           }
         ]
       }
@@ -906,7 +906,7 @@
           {
             "lang": "rust",
             "label": "Rust",
-            "source": "use scalar_galaxy::*;\n\n#[tokio::main]\nasync fn main() -> Result<(), Box<dyn std::error::Error>> {\n    let client = Galaxy::builder()\n        .bearer_token(std::env::var(\"SCALAR_BEARER_TOKEN\")?)\n        .build()?;\n\n    let response = client.authentication().create_token().send().await?;\n\n    println!(\"{:?}\", response);\n\n    Ok(())\n}"
+            "source": "use scalar_galaxy::*;\n\n#[tokio::main]\nasync fn main() -> Result<(), Box<dyn std::error::Error>> {\n    let client = Galaxy::builder().bearer_auth(std::env::var(\"BEARER_AUTH\")?).build()?;\n\n    let response = client.authentication().create_token().send().await?;\n\n    println!(\"{:?}\", response);\n\n    Ok(())\n}"
           }
         ]
       }
@@ -999,7 +999,7 @@
           {
             "lang": "rust",
             "label": "Rust",
-            "source": "use scalar_galaxy::*;\n\n#[tokio::main]\nasync fn main() -> Result<(), Box<dyn std::error::Error>> {\n    let client = Galaxy::builder()\n        .bearer_token(std::env::var(\"SCALAR_BEARER_TOKEN\")?)\n        .build()?;\n\n    let response = client.authentication().list_me().send().await?;\n\n    println!(\"{:?}\", response);\n\n    Ok(())\n}"
+            "source": "use scalar_galaxy::*;\n\n#[tokio::main]\nasync fn main() -> Result<(), Box<dyn std::error::Error>> {\n    let client = Galaxy::builder().bearer_auth(std::env::var(\"BEARER_AUTH\")?).build()?;\n\n    let response = client.authentication().list_me().send().await?;\n\n    println!(\"{:?}\", response);\n\n    Ok(())\n}"
           }
         ]
       }
