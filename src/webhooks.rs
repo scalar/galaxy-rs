@@ -7,7 +7,7 @@ use crate::error::Error;
 #[derive(Debug, Clone)]
 #[non_exhaustive]
 pub enum WebhookEvent {
-    Unwrap(crate::models::Planet),
+    NewPlanet(crate::models::Planet),
 }
 
 impl WebhookEvent {
@@ -17,52 +17,214 @@ impl WebhookEvent {
     /// (typically in a request header); `payload` is the raw JSON body.
     pub fn parse(event_type: &str, payload: &[u8]) -> Result<Self, Error> {
         match event_type {
-            "newPlanet" => Ok(Self::Unwrap(serde_json::from_slice(payload)?)),
+            "newPlanet" => Ok(Self::NewPlanet(serde_json::from_slice(payload)?)),
             other => Err(Error::Config(format!("unrecognized webhook event type: {other}"))),
         }
     }
 }
 
+/// Header carrying the unique message id of the delivery.
+const WEBHOOK_ID_HEADER: &str = "webhook-id";
+
+/// Header carrying the unix-seconds timestamp of the delivery.
+const WEBHOOK_TIMESTAMP_HEADER: &str = "webhook-timestamp";
+
+/// Header carrying the space-separated `<version>,<base64>` signature list.
+const WEBHOOK_SIGNATURE_HEADER: &str = "webhook-signature";
+
+/// Signature scheme version this verifier accepts; other versions in the
+/// header are skipped rather than rejected, so a provider rolling out a new
+/// scheme alongside `v1` keeps verifying.
+const WEBHOOK_SIGNATURE_VERSION: &str = "v1,";
+
+/// Optional prefix on the signing secret; everything after it is base64.
+const WEBHOOK_SECRET_PREFIX: &str = "whsec_";
+
+/// Accepted clock skew, in seconds, between the delivery timestamp and the
+/// verification time. Bounds how long a captured delivery can be replayed.
+const WEBHOOK_TOLERANCE_SECONDS: u64 = 300;
+
 /// Verifies an inbound webhook's `webhook-signature` HMAC-Sha256 signature.
 ///
-/// Returns `Ok(())` when the hex-encoded signature matches the HMAC of the
-/// raw request body under `secret`, using a constant-time comparison.
-pub fn verify_signature(secret: &[u8], payload: &[u8], signature: &str) -> Result<(), Error> {
+/// `payload` is the raw request body — verify the bytes as received, before
+/// any JSON round-trip, since re-serializing changes them. `headers` are the
+/// request headers as delivered: `webhook-id`, `webhook-timestamp`,
+/// and `webhook-signature`. `secret` is the signing secret as the
+/// provider issues it (a `whsec_` prefix is optional; the rest is base64).
+///
+/// # Errors
+///
+/// Returns [`Error::Config`] when a required header is missing or malformed,
+/// the secret is empty or not valid base64, the delivery timestamp is outside
+/// the tolerance window, or no signature in the header matches the payload.
+pub fn verify_signature(payload: &[u8], headers: &http::HeaderMap, secret: &str) -> Result<(), Error> {
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_err(|_| Error::Config("system clock is set before the unix epoch".to_string()))?
+        .as_secs();
+    verify_signature_at(payload, headers, secret, now)
+}
+
+/// Verifies an inbound webhook as of an explicit verification time, in unix
+/// seconds.
+///
+/// Same checks as [`verify_signature`], with the clock supplied by the
+/// caller so tests (and replays of captured deliveries) are deterministic.
+///
+/// # Errors
+///
+/// See [`verify_signature`].
+pub fn verify_signature_at(
+    payload: &[u8],
+    headers: &http::HeaderMap,
+    secret: &str,
+    now_unix_seconds: u64,
+) -> Result<(), Error> {
+    let message_id = required_header(headers, WEBHOOK_ID_HEADER)?;
+    let timestamp = required_header(headers, WEBHOOK_TIMESTAMP_HEADER)?;
+    let signatures = required_header(headers, WEBHOOK_SIGNATURE_HEADER)?;
+
+    let sent = timestamp
+        .parse::<u64>()
+        .map_err(|_| Error::Config(format!("invalid {WEBHOOK_TIMESTAMP_HEADER} header")))?;
+    // Rejected in both directions: a timestamp far in the future is as much a
+    // forgery signal as an expired one, and the signature covers the
+    // timestamp, so an attacker cannot edit it without the signing key.
+    if now_unix_seconds.abs_diff(sent) > WEBHOOK_TOLERANCE_SECONDS {
+        return Err(Error::Config(
+            "webhook timestamp is outside the tolerance window".to_string(),
+        ));
+    }
+
+    let expected = webhook_signature(payload, secret, message_id, timestamp)?;
+    // The header is a space-separated list so a provider can rotate signing
+    // keys by sending every valid signature for one delivery; any entry
+    // matching is a pass, and entries of another version are not ours to judge.
+    for entry in signatures.split_whitespace() {
+        let Some(candidate) = entry.strip_prefix(WEBHOOK_SIGNATURE_VERSION) else {
+            continue;
+        };
+        if constant_time_eq(candidate.as_bytes(), expected.as_bytes()) {
+            return Ok(());
+        }
+    }
+    Err(Error::Config("webhook signature verification failed".to_string()))
+}
+
+/// Computes the base64 signature over `{message_id}.{timestamp}.{payload}`,
+/// keyed with the base64-decoded signing secret.
+fn webhook_signature(payload: &[u8], secret: &str, message_id: &str, timestamp: &str) -> Result<String, Error> {
     use hmac::{Hmac, KeyInit, Mac};
     use sha2::Sha256;
 
-    let mut mac = Hmac::<Sha256>::new_from_slice(secret).map_err(|error| Error::Config(error.to_string()))?;
-    mac.update(payload);
-    let expected = mac.finalize().into_bytes();
-    let provided = decode_hex(signature)?;
-    if provided.len() == expected.len() && constant_time_eq(&provided, &expected) {
-        Ok(())
-    } else {
-        Err(Error::Config("webhook signature verification failed".to_string()))
+    let key = decode_base64(secret.strip_prefix(WEBHOOK_SECRET_PREFIX).unwrap_or(secret))?;
+    // An empty secret — an unset environment variable, a missing config key —
+    // would otherwise key the HMAC with zero bytes, which HMAC accepts: the key
+    // is then public knowledge and anyone can forge a signature this function
+    // would accept. Refused outright rather than verified against nothing.
+    if key.is_empty() {
+        return Err(Error::Config("webhook signing secret is empty".to_string()));
     }
+    let mut mac = Hmac::<Sha256>::new_from_slice(&key).map_err(|error| Error::Config(error.to_string()))?;
+    // Fed in pieces rather than through one concatenated buffer so a large
+    // payload is never copied just to be hashed.
+    mac.update(message_id.as_bytes());
+    mac.update(b".");
+    mac.update(timestamp.as_bytes());
+    mac.update(b".");
+    mac.update(payload);
+    Ok(encode_base64(&mac.finalize().into_bytes()))
 }
 
-/// Decodes a lowercase/uppercase hex string into bytes.
-fn decode_hex(value: &str) -> Result<Vec<u8>, Error> {
-    // Providers prefix the hex digest with their algorithm name
-    // (`sha256=…`, `sha512=…`, `sha1=…`); strip everything up to and
-    // including the first `=` so any algorithm prefix is handled, while a
-    // bare hex string (no prefix) passes through unchanged.
-    let value = value.split_once('=').map_or(value, |(_, hex)| hex);
-    if value.len() % 2 != 0 {
-        return Err(Error::Config("invalid webhook signature encoding".to_string()));
+/// Reads a required header, naming it when it is missing or not valid UTF-8.
+fn required_header<'headers>(headers: &'headers http::HeaderMap, name: &str) -> Result<&'headers str, Error> {
+    headers
+        .get(name)
+        .ok_or_else(|| Error::Config(format!("missing webhook header {name}")))?
+        .to_str()
+        .map_err(|_| Error::Config(format!("webhook header {name} is not valid UTF-8")))
+}
+
+/// Decodes base64 into bytes.
+///
+/// Both alphabets are accepted, with or without padding, because the signing
+/// secret is copied out of a provider dashboard by hand: rejecting a secret
+/// over its alphabet would fail verification for a key that is otherwise
+/// exactly right. What is not tolerated is a truncated secret — a lone
+/// trailing character encodes no byte, and anything after the padding is not
+/// part of the value — because silently decoding those to a shorter key turns
+/// a mistyped secret into "signature verification failed", pointing the
+/// operator at the payload instead of at the secret. Vendored rather than
+/// pulled in as a dependency — the generated runtime stays dependency-light.
+fn decode_base64(value: &str) -> Result<Vec<u8>, Error> {
+    let invalid = || Error::Config("webhook signing secret is not valid base64".to_string());
+    let mut out = Vec::with_capacity(value.len() / 4 * 3);
+    let mut buffer = 0u32;
+    let mut bits = 0u32;
+    let mut bytes = value.bytes();
+    for byte in bytes.by_ref() {
+        if byte == b'=' {
+            break;
+        }
+        let sextet = match byte {
+            b'A'..=b'Z' => byte - b'A',
+            b'a'..=b'z' => byte - b'a' + 26,
+            b'0'..=b'9' => byte - b'0' + 52,
+            b'+' | b'-' => 62,
+            b'/' | b'_' => 63,
+            _ => return Err(invalid()),
+        };
+        buffer = (buffer << 6) | u32::from(sextet);
+        bits += 6;
+        if bits >= 8 {
+            bits -= 8;
+            out.push(((buffer >> bits) & 0xFF) as u8);
+        }
     }
-    (0..value.len())
-        .step_by(2)
-        .map(|index| u8::from_str_radix(&value[index..index + 2], 16).map_err(|error| Error::Config(error.to_string())))
-        .collect()
+    if bits >= 6 || bytes.any(|byte| byte != b'=') {
+        return Err(invalid());
+    }
+    Ok(out)
+}
+
+/// Encodes bytes as standard (padded) base64.
+fn encode_base64(input: &[u8]) -> String {
+    const TABLE: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut out = String::with_capacity(input.len().div_ceil(3) * 4);
+    for chunk in input.chunks(3) {
+        let b0 = u32::from(chunk[0]);
+        let b1 = u32::from(*chunk.get(1).unwrap_or(&0));
+        let b2 = u32::from(*chunk.get(2).unwrap_or(&0));
+        let triple = (b0 << 16) | (b1 << 8) | b2;
+        out.push(TABLE[((triple >> 18) & 0x3F) as usize] as char);
+        out.push(TABLE[((triple >> 12) & 0x3F) as usize] as char);
+        out.push(if chunk.len() > 1 {
+            TABLE[((triple >> 6) & 0x3F) as usize] as char
+        } else {
+            '='
+        });
+        out.push(if chunk.len() > 2 {
+            TABLE[(triple & 0x3F) as usize] as char
+        } else {
+            '='
+        });
+    }
+    out
 }
 
 /// Compares two byte slices in constant time to avoid timing leaks.
+///
+/// Only the length is allowed to short-circuit: it is public in the header
+/// either way, while the bytes must not be probeable one at a time. The
+/// accumulator goes through `black_box` so the optimizer cannot turn the
+/// whole loop back into an early-exit comparison.
 fn constant_time_eq(left: &[u8], right: &[u8]) -> bool {
+    if left.len() != right.len() {
+        return false;
+    }
     let mut diff = 0u8;
     for (a, b) in left.iter().zip(right.iter()) {
         diff |= a ^ b;
     }
-    diff == 0
+    std::hint::black_box(diff) == 0
 }

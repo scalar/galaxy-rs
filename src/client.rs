@@ -48,9 +48,9 @@ impl Environment {
 /// Credentials applied to every outgoing request.
 #[derive(Clone, Default)]
 struct Auth {
-    bearer_token: Option<String>,
-    username: Option<String>,
-    password: Option<String>,
+    bearer_auth: Option<String>,
+    basic_auth_username: Option<String>,
+    basic_auth_password: Option<String>,
     api_key_header: Option<String>,
     api_key_query: Option<String>,
     api_key_cookie: Option<String>,
@@ -72,9 +72,9 @@ impl Auth {
     /// `None` here means no token was needed — or the exchange failed and
     /// another configured alternative is taking over.
     fn apply(&self, headers: &mut http::HeaderMap, url: &mut url::Url, oauth_token: Option<&str>) -> Result<(), Error> {
-        if self.username.is_some() && self.password.is_some() {
-            if let Some(user) = &self.username {
-                let pass = self.password.as_deref().unwrap_or("");
+        if self.basic_auth_username.is_some() && self.basic_auth_password.is_some() {
+            if let Some(user) = &self.basic_auth_username {
+                let pass = self.basic_auth_password.as_deref().unwrap_or("");
                 let token = base64_encode(format!("{user}:{pass}").as_bytes());
                 headers.insert(http::header::AUTHORIZATION, auth_value(&format!("Basic {token}"))?);
             }
@@ -85,8 +85,8 @@ impl Auth {
             if let Some(value) = &self.api_key_query {
                 url.query_pairs_mut().append_pair("api_key", value);
             }
-        } else if self.bearer_token.is_some() {
-            if let Some(value) = &self.bearer_token {
+        } else if self.bearer_auth.is_some() {
+            if let Some(value) = &self.bearer_auth {
                 headers.insert(http::header::AUTHORIZATION, auth_value(&format!("Bearer {value}"))?);
             }
         } else if self.api_key_query.is_some() {
@@ -119,11 +119,11 @@ impl Auth {
     /// which alternative could authenticate the request with no token at
     /// all.
     fn selected_group(&self, oauth_ready: bool) -> Option<usize> {
-        if self.username.is_some() && self.password.is_some() {
+        if self.basic_auth_username.is_some() && self.basic_auth_password.is_some() {
             Some(0)
         } else if self.api_key_header.is_some() && self.api_key_query.is_some() {
             Some(1)
-        } else if self.bearer_token.is_some() {
+        } else if self.bearer_auth.is_some() {
             Some(2)
         } else if self.api_key_query.is_some() {
             Some(3)
@@ -235,22 +235,22 @@ impl Galaxy {
         if let Some(value) = read_env("SCALAR_BASE_URL") {
             builder = builder.base_url(value);
         }
-        if let Some(value) = read_env("SCALAR_BEARER_TOKEN") {
-            builder = builder.bearer_token(value);
+        if let Some(value) = read_env("BEARER_AUTH") {
+            builder = builder.bearer_auth(value);
         }
-        if let Some(value) = read_env("SCALAR_USERNAME") {
-            builder = builder.username(value);
+        if let Some(value) = read_env("BASIC_AUTH_USERNAME") {
+            builder = builder.basic_auth_username(value);
         }
-        if let Some(value) = read_env("SCALAR_PASSWORD") {
-            builder = builder.password(value);
+        if let Some(value) = read_env("BASIC_AUTH_PASSWORD") {
+            builder = builder.basic_auth_password(value);
         }
-        if let Some(value) = read_env("SCALAR_API_KEY_HEADER") {
+        if let Some(value) = read_env("API_KEY_HEADER") {
             builder = builder.api_key_header(value);
         }
-        if let Some(value) = read_env("SCALAR_API_KEY_QUERY") {
+        if let Some(value) = read_env("API_KEY_QUERY") {
             builder = builder.api_key_query(value);
         }
-        if let Some(value) = read_env("SCALAR_API_KEY_COOKIE") {
+        if let Some(value) = read_env("API_KEY_COOKIE") {
             builder = builder.api_key_cookie(value);
         }
         if let Some(value) = read_env("SCALAR_ACCESS_TOKEN") {
@@ -624,9 +624,9 @@ pub struct GalaxyBuilder {
     /// First invalid header handed to `default_header`, reported by `build`
     /// so the setters stay infallible without swallowing the mistake.
     invalid_header: Option<String>,
-    bearer_token: Option<String>,
-    username: Option<String>,
-    password: Option<String>,
+    bearer_auth: Option<String>,
+    basic_auth_username: Option<String>,
+    basic_auth_password: Option<String>,
     api_key_header: Option<String>,
     api_key_query: Option<String>,
     api_key_cookie: Option<String>,
@@ -764,20 +764,20 @@ impl GalaxyBuilder {
     }
 
     /// JWT Bearer token authentication
-    pub fn bearer_token(mut self, value: impl Into<String>) -> Self {
-        self.bearer_token = Some(value.into());
+    pub fn bearer_auth(mut self, value: impl Into<String>) -> Self {
+        self.bearer_auth = Some(value.into());
         self
     }
 
     /// Basic HTTP authentication
-    pub fn username(mut self, value: impl Into<String>) -> Self {
-        self.username = Some(value.into());
+    pub fn basic_auth_username(mut self, value: impl Into<String>) -> Self {
+        self.basic_auth_username = Some(value.into());
         self
     }
 
     /// Basic HTTP authentication
-    pub fn password(mut self, value: impl Into<String>) -> Self {
-        self.password = Some(value.into());
+    pub fn basic_auth_password(mut self, value: impl Into<String>) -> Self {
+        self.basic_auth_password = Some(value.into());
         self
     }
 
@@ -905,9 +905,9 @@ impl GalaxyBuilder {
                 sleep,
                 base_url,
                 auth: Auth {
-                    bearer_token: self.bearer_token,
-                    username: self.username,
-                    password: self.password,
+                    bearer_auth: self.bearer_auth,
+                    basic_auth_username: self.basic_auth_username,
+                    basic_auth_password: self.basic_auth_password,
                     api_key_header: self.api_key_header,
                     api_key_query: self.api_key_query,
                     api_key_cookie: self.api_key_cookie,
