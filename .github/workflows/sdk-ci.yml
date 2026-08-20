@@ -4,6 +4,12 @@ on:
   push:
   pull_request:
 
+# Least privilege for a verification-only workflow: every job below only reads the checked-out
+# tree, so the run's GITHUB_TOKEN is narrowed to that regardless of the repository's default
+# grants. Declared at the workflow level so a job added later inherits the floor.
+permissions:
+  contents: read
+
 jobs:
   # Lint gate: formatting plus clippy with warnings denied, over every target
   # and feature — the same bar the generator holds its own baselines to, so a
