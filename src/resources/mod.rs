@@ -6,14 +6,17 @@ pub mod celestial_bodies;
 pub mod planets;
 
 impl crate::client::Galaxy {
+    /// Everything about planets
     pub fn planets(&self) -> crate::resources::planets::Planets {
         crate::resources::planets::Planets::new(self.clone())
     }
 
+    /// Celestial bodies are the planets and satellites in the Scalar Galaxy.
     pub fn celestial_bodies(&self) -> crate::resources::celestial_bodies::CelestialBodies {
         crate::resources::celestial_bodies::CelestialBodies::new(self.clone())
     }
 
+    /// Some endpoints are public, but some require authentication. We provide all the required endpoints to create an account and authorize yourself.
     pub fn authentication(&self) -> crate::resources::authentication::Authentication {
         crate::resources::authentication::Authentication::new(self.clone())
     }
