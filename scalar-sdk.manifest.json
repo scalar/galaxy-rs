@@ -8,11 +8,11 @@
   ],
   "environments": {
     "production": "https://galaxy.scalar.com",
-    "responds_with_your_request_data": "{protocol}://void.scalar.com/{path}"
+    "void": "https://void.scalar.com/"
   },
   "environmentOrder": [
     "production",
-    "responds_with_your_request_data"
+    "void"
   ],
   "auth": [
     "bearer",
