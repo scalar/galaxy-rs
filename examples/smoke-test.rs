@@ -15,6 +15,9 @@ struct SmokeResult {
     operation: String,
     method: String,
     path: String,
+    /// Which of an operation's two calls this is; empty when it contributed only one.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    label: String,
     status: String,
     #[serde(rename = "durationMs")]
     duration_ms: i64,
@@ -70,6 +73,32 @@ async fn main() {
             operation: "listAllData".to_string(),
             method: "GET".to_string(),
             path: "/planets".to_string(),
+            label: "required params".to_string(),
+            status: status.to_string(),
+            duration_ms,
+            error,
+        });
+    }
+    if selected(&filter, "listAllData", "/planets") {
+        let started = std::time::Instant::now();
+        let result: Result<(), Error> = async {
+            let _ = client.planets().list_all_data().limit(10).offset(0).send().await?;
+            Ok(())
+        }
+        .await;
+        let duration_ms = started.elapsed().as_millis() as i64;
+        let (status, error) = match result {
+            Ok(()) => ("passed", String::new()),
+            Err(error) if is_smoke_failure(&error) => ("failed", format!("{error}")),
+            // A response came back (API error or decode mismatch): the request
+            // reached the server, which is what this smoke verifies.
+            Err(_) => ("passed", String::new()),
+        };
+        results.push(SmokeResult {
+            operation: "listAllData".to_string(),
+            method: "GET".to_string(),
+            path: "/planets".to_string(),
+            label: "all params".to_string(),
             status: status.to_string(),
             duration_ms,
             error,
@@ -94,6 +123,7 @@ async fn main() {
             operation: "create".to_string(),
             method: "POST".to_string(),
             path: "/planets".to_string(),
+            label: "".to_string(),
             status: status.to_string(),
             duration_ms,
             error,
@@ -118,6 +148,7 @@ async fn main() {
             operation: "retrieve".to_string(),
             method: "GET".to_string(),
             path: "/planets/{planetId}".to_string(),
+            label: "".to_string(),
             status: status.to_string(),
             duration_ms,
             error,
@@ -142,6 +173,7 @@ async fn main() {
             operation: "update".to_string(),
             method: "PUT".to_string(),
             path: "/planets/{planetId}".to_string(),
+            label: "".to_string(),
             status: status.to_string(),
             duration_ms,
             error,
@@ -166,16 +198,17 @@ async fn main() {
             operation: "delete".to_string(),
             method: "DELETE".to_string(),
             path: "/planets/{planetId}".to_string(),
+            label: "".to_string(),
             status: status.to_string(),
             duration_ms,
             error,
         });
     }
     #[cfg(feature = "multipart")]
-    if selected(&filter, "uploadImage", "/planets/{planetId}/image") {
+    if selected(&filter, "delteImage", "/planets/{planetId}/image") {
         let started = std::time::Instant::now();
         let result: Result<(), Error> = async {
-            let _ = client.planets().upload_image(1).send().await?;
+            let _ = client.planets().delte_image(1).send().await?;
             Ok(())
         }
         .await;
@@ -188,9 +221,10 @@ async fn main() {
             Err(_) => ("passed", String::new()),
         };
         results.push(SmokeResult {
-            operation: "uploadImage".to_string(),
+            operation: "delteImage".to_string(),
             method: "POST".to_string(),
             path: "/planets/{planetId}/image".to_string(),
+            label: "".to_string(),
             status: status.to_string(),
             duration_ms,
             error,
@@ -215,6 +249,7 @@ async fn main() {
             operation: "createUser".to_string(),
             method: "POST".to_string(),
             path: "/user/signup".to_string(),
+            label: "".to_string(),
             status: status.to_string(),
             duration_ms,
             error,
@@ -239,6 +274,7 @@ async fn main() {
             operation: "createToken".to_string(),
             method: "POST".to_string(),
             path: "/auth/token".to_string(),
+            label: "".to_string(),
             status: status.to_string(),
             duration_ms,
             error,
@@ -263,6 +299,7 @@ async fn main() {
             operation: "listMe".to_string(),
             method: "GET".to_string(),
             path: "/me".to_string(),
+            label: "".to_string(),
             status: status.to_string(),
             duration_ms,
             error,
@@ -273,6 +310,7 @@ async fn main() {
             operation: "create".to_string(),
             method: "POST".to_string(),
             path: "/celestial-bodies".to_string(),
+            label: String::new(),
             status: "skipped".to_string(),
             duration_ms: 0,
             error: "required request arguments could not be synthesized into a compiling value".to_string(),

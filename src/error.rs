@@ -61,24 +61,6 @@ pub enum Error {
     /// A required request parameter was not supplied to a builder.
     #[error("missing required parameter: `{0}`")]
     MissingParameter(&'static str),
-
-    /// A WebSocket connection failed to open, send, or receive a frame.
-    ///
-    /// Only constructed by SDKs that expose WebSocket operations. `message`
-    /// carries the underlying `tungstenite` failure so callers can log it, and
-    /// `response` is populated when the failure was the server *rejecting the
-    /// upgrade handshake* — an authentication or routing problem is diagnosed
-    /// from its status, headers, and body exactly like a failed HTTP call,
-    /// which a stringly error cannot express. Boxed for the same reason
-    /// [`Error::Api`] is: an inline [`ApiError`] would bloat every `Result` in
-    /// the crate to the size of a header map.
-    #[error("websocket error: {message}")]
-    WebSocket {
-        /// The underlying failure, rendered for logs.
-        message: String,
-        /// The HTTP handshake response, when the server rejected the upgrade.
-        response: Option<Box<ApiError>>,
-    },
 }
 
 // Hand-written (instead of `#[from]` on the boxed variant) so `?` and

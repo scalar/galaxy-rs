@@ -188,12 +188,21 @@ impl TokenProvider {
         deadline: Option<Duration>,
         max_response_size: usize,
     ) -> Result<CachedToken, Error> {
-        let mut form = url::form_urlencoded::Serializer::new(String::new());
-        form.append_pair("grant_type", "client_credentials");
-        if !self.scope.is_empty() {
-            form.append_pair("scope", &self.scope);
-        }
-        let body = form.finish();
+        // Scoped so the serializer is dropped before the `.await` below.
+        // `url::form_urlencoded::Serializer` is not `Send`, and a binding that
+        // merely stops being *used* is still held across an await point — which
+        // would make this future non-`Send`. Pagination requires exactly that
+        // bound (`PageFuture` is `Pin<Box<dyn Future + Send>>`), so without the
+        // block an SDK with both OAuth client-credentials and a paginated
+        // operation fails to compile.
+        let body = {
+            let mut form = url::form_urlencoded::Serializer::new(String::new());
+            form.append_pair("grant_type", "client_credentials");
+            if !self.scope.is_empty() {
+                form.append_pair("scope", &self.scope);
+            }
+            form.finish()
+        };
 
         let mut request = http::Request::new(SdkBody::from_bytes(body.into_bytes()));
         *request.method_mut() = http::Method::POST;
@@ -212,22 +221,25 @@ impl TokenProvider {
             .headers_mut()
             .insert(http::header::AUTHORIZATION, self.basic_authorization()?);
 
+        // A token response is small by construction, so it always gets a
+        // deadline — the caller's if they set one, otherwise the token default.
+        let deadline = deadline.or(Some(DEFAULT_TOKEN_TIMEOUT));
         // A token request is a POST, so `send_with_retries` will only replay it
         // for statuses the server could not have processed (408/429/503) and
         // for failed connections — exactly the right taxonomy here.
-        let response = crate::http::send_with_retries(
-            transport,
-            sleep,
-            request,
-            max_retries,
-            deadline.or(Some(DEFAULT_TOKEN_TIMEOUT)),
-            false,
-        )
-        .await?;
+        let response = crate::http::send_with_retries(transport, sleep, request, max_retries, deadline, false).await?;
         // Reuses the shared decode path, so a non-success token response
         // surfaces as the same `Error::Api` (status, request id, summarized
-        // body) callers already handle, under the configured size cap.
-        let payload: TokenResponse = crate::http::decode_json(response, max_response_size).await?;
+        // body) callers already handle, under the configured size cap. The read
+        // is deadline-bounded like every other buffered decode: without it a
+        // token endpoint that sends headers and then stalls would hang every
+        // request waiting on the credential.
+        let payload: TokenResponse = crate::http::read_with_deadline(
+            sleep,
+            deadline,
+            crate::http::decode_json::<TokenResponse>(response, max_response_size),
+        )
+        .await?;
         Ok(CachedToken {
             access_token: payload.access_token,
             // `checked_add` rather than `+`: `expires_in` is untrusted server
@@ -490,6 +502,38 @@ mod tests {
         assert!(matches!(error, Error::Api(_)), "expected an API error, got {error:?}");
         assert_eq!(token(&provider, &transport).await.expect("retry"), "recovered");
         assert_eq!(transport.calls(), 2);
+    }
+
+    /// A token endpoint that sends headers and then stalls its body is cut off
+    /// rather than hanging every request that waits on the credential.
+    #[tokio::test]
+    async fn a_stalled_token_body_times_out() {
+        /// Answers with headers and a body that never produces a byte.
+        #[derive(Debug)]
+        struct StalledBodyTransport;
+
+        impl Transport for StalledBodyTransport {
+            fn execute(
+                &self,
+                _request: http::Request<SdkBody>,
+            ) -> BoxFuture<'_, Result<http::Response<SdkBody>, TransportError>> {
+                let stalled = futures_util::stream::pending::<Result<bytes::Bytes, TransportError>>();
+                let response = http::Response::builder()
+                    .status(200)
+                    .body(SdkBody::from_stream(stalled))
+                    .expect("statically valid response parts must build");
+                Box::pin(std::future::ready(Ok(response)))
+            }
+        }
+
+        let error = provider()
+            .access_token(&StalledBodyTransport, &NoSleep, 0, None, 1024 * 1024)
+            .await
+            .expect_err("a token body that never arrives must not resolve");
+        assert!(
+            matches!(error, Error::Transport(_)),
+            "expected a transport timeout, got {error:?}"
+        );
     }
 
     /// A poisoned cache mutex is recovered from, never unwrapped.

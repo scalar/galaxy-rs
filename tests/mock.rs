@@ -44,8 +44,8 @@ async fn authenticates_requests_with_configured_credentials() {
         .transport(mock.clone())
         .sleeper(InstantSleep)
         .max_retries(0)
-        .username("test-username")
-        .password("test-password")
+        .basic_auth_username("test-basic-auth-username")
+        .basic_auth_password("test-basic-auth-password")
         .build()
         .expect("client builds");
     let result: Result<(), Error> = async {
@@ -62,7 +62,7 @@ async fn authenticates_requests_with_configured_credentials() {
         .expect("authorization header");
     assert_eq!(
         authorization.to_str().expect("ascii header"),
-        "Basic dGVzdC11c2VybmFtZTp0ZXN0LXBhc3N3b3Jk"
+        "Basic dGVzdC1iYXNpYy1hdXRoLXVzZXJuYW1lOnRlc3QtYmFzaWMtYXV0aC1wYXNzd29yZA=="
     );
 }
 
@@ -171,8 +171,8 @@ async fn oauth_token_endpoint_is_untouched_when_another_credential_wins() {
         .max_retries(0)
         .client_id("test-client-id")
         .client_secret("test-client-secret")
-        .username("test-username")
-        .password("test-password")
+        .basic_auth_username("test-basic-auth-username")
+        .basic_auth_password("test-basic-auth-password")
         .build()
         .expect("client builds");
     let result: Result<(), Error> = async {
@@ -197,7 +197,7 @@ async fn oauth_token_endpoint_is_untouched_when_another_credential_wins() {
         .expect("authorization header");
     assert_eq!(
         authorization.to_str().expect("ascii header"),
-        "Basic dGVzdC11c2VybmFtZTp0ZXN0LXBhc3N3b3Jk"
+        "Basic dGVzdC1iYXNpYy1hdXRoLXVzZXJuYW1lOnRlc3QtYmFzaWMtYXV0aC1wYXNzd29yZA=="
     );
 }
 

@@ -10,7 +10,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-scalar-galaxy = "0.2.0" # x-release-please-version
+scalar-galaxy = "0.3.0" # x-release-please-version
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 ```
 
@@ -31,9 +31,7 @@ use scalar_galaxy::*;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let client = Galaxy::builder()
-        .bearer_token(std::env::var("SCALAR_BEARER_TOKEN")?)
-        .build()?;
+    let client = Galaxy::builder().bearer_auth(std::env::var("BEARER_AUTH")?).build()?;
 
     let response = client.planets().list_all_data().send().await?;
 
@@ -54,9 +52,9 @@ use scalar_galaxy::Galaxy;
 
 async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let client = Galaxy::builder()
-        .bearer_token("…")
-        .username("…")
-        .password("…")
+        .bearer_auth("…")
+        .basic_auth_username("…")
+        .basic_auth_password("…")
         .api_key_header("…")
         .api_key_query("…")
         .api_key_cookie("…")
@@ -75,12 +73,12 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
 Credentials can be set on the builder or read from the environment by
 `from_env`:
 
-- `bearer_token` — environment variable `SCALAR_BEARER_TOKEN`
-- `username` — environment variable `SCALAR_USERNAME`
-- `password` — environment variable `SCALAR_PASSWORD`
-- `api_key_header` — environment variable `SCALAR_API_KEY_HEADER`
-- `api_key_query` — environment variable `SCALAR_API_KEY_QUERY`
-- `api_key_cookie` — environment variable `SCALAR_API_KEY_COOKIE`
+- `bearer_auth` — environment variable `BEARER_AUTH`
+- `basic_auth_username` — environment variable `BASIC_AUTH_USERNAME`
+- `basic_auth_password` — environment variable `BASIC_AUTH_PASSWORD`
+- `api_key_header` — environment variable `API_KEY_HEADER`
+- `api_key_query` — environment variable `API_KEY_QUERY`
+- `api_key_cookie` — environment variable `API_KEY_COOKIE`
 - `access_token` — environment variable `SCALAR_ACCESS_TOKEN`
 - `client_id` — environment variable `SCALAR_CLIENT_ID`
 - `client_secret` — environment variable `SCALAR_CLIENT_SECRET`
@@ -278,7 +276,9 @@ Response bodies are untrusted, so the runtime bounds them by default:
   are consumed incrementally and are exempt.
 - Each attempt carries a 60-second deadline unless one is set explicitly; it
   covers request-body upload through response headers, and every retry gets a
-  fresh one.
+  fresh one. Reading a *buffered* response body is bounded the same way, so a
+  server that sends headers and then stalls cannot hang the call. Streaming
+  responses are exempt.
 - The bundled backend follows **no** redirects: a followed redirect can
   re-send credentials to a host the caller never chose. A next-page link that
   points at another origin is refused for the same reason.
