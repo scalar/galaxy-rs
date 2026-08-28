@@ -33,8 +33,8 @@ pub enum Environment {
     /// The `production` environment.
     #[default]
     Production,
-    /// The `responds_with_your_request_data` environment.
-    RespondsWithYourRequestData,
+    /// The `void` environment.
+    Void,
 }
 
 impl Environment {
@@ -42,7 +42,7 @@ impl Environment {
     pub fn base_url(self) -> &'static str {
         match self {
             Self::Production => "https://galaxy.scalar.com",
-            Self::RespondsWithYourRequestData => "{protocol}://void.scalar.com/{path}",
+            Self::Void => "https://void.scalar.com/",
         }
     }
 }
