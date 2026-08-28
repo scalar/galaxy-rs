@@ -12,11 +12,13 @@ use crate::error::Error;
 use crate::transport::{SdkBody, Sleep, Transport};
 
 const DEFAULT_MAX_RETRIES: u32 = 2;
-// Default per-attempt deadline, applied in dispatch only to requests with
-// buffered non-multipart bodies: the deadline race spans the whole attempt
-// including the request-body upload, so a default the caller never chose
-// must not kill a streaming upload of unknown size — nor a multipart form,
-// which buffers file parts of unbounded size (see `ClientBuilder::timeout`).
+// Default deadline, applied in two places (see `ClientBuilder::timeout`).
+// In dispatch it bounds the attempt only for requests with buffered
+// non-multipart bodies: the race spans the request-body upload, so a
+// default the caller never chose must not kill a streaming upload of
+// unknown size — nor a multipart form, which buffers file parts of
+// unbounded size. In `body_deadline` it bounds reading a buffered response
+// body, but only one small by construction, never a binary download.
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(60);
 const USER_AGENT: &str = concat!("scalar-galaxy/", env!("CARGO_PKG_VERSION"));
 // Default `Accept` for the JSON APIs that make up almost every operation.
@@ -175,9 +177,9 @@ struct Inner {
     auth: Auth,
     /// Maximum retry attempts for transient failures.
     max_retries: u32,
-    /// The caller-configured deadline; `None` means only the buffered
-    /// non-multipart `DEFAULT_TIMEOUT` applies, resolved per request in
-    /// `dispatch`.
+    /// The caller-configured deadline, applied to the dispatch attempt and
+    /// again to the buffered body read; `None` means only `DEFAULT_TIMEOUT`
+    /// applies, resolved per request in `dispatch` and `body_deadline`.
     deadline: Option<Duration>,
     /// Cap on buffered response bodies, enforced by the decode layer.
     max_response_size: usize,
@@ -306,6 +308,18 @@ impl Galaxy {
         }
     }
 
+    /// The bound on reading a buffered response body.
+    ///
+    /// A caller-set timeout (per request, then client-wide) always applies. The
+    /// default additionally covers small bodies (`small`), but never a binary
+    /// download, which is legitimately large and slow.
+    fn body_deadline(&self, overrides: RequestOverrides, small: bool) -> Option<Duration> {
+        overrides
+            .timeout
+            .or(self.inner.deadline)
+            .or_else(|| small.then_some(DEFAULT_TIMEOUT))
+    }
+
     /// Builds, authenticates, and sends a request, decoding a JSON response.
     pub(crate) async fn send<T: DeserializeOwned, B: Serialize>(
         &self,
@@ -329,7 +343,13 @@ impl Galaxy {
                 ContentEncoding::Json,
             )
             .await?;
-        crate::http::decode_json(response, self.inner.max_response_size).await
+        let read_deadline = self.body_deadline(overrides, true);
+        crate::http::read_with_deadline(
+            &*self.inner.sleep,
+            read_deadline,
+            crate::http::decode_json(response, self.inner.max_response_size),
+        )
+        .await
     }
 
     /// Like [`send`](Self::send) but for operations that return no content.
@@ -355,7 +375,13 @@ impl Galaxy {
                 ContentEncoding::Json,
             )
             .await?;
-        crate::http::decode_empty(response, self.inner.max_response_size).await
+        let read_deadline = self.body_deadline(overrides, true);
+        crate::http::read_with_deadline(
+            &*self.inner.sleep,
+            read_deadline,
+            crate::http::decode_empty(response, self.inner.max_response_size),
+        )
+        .await
     }
 
     /// Encodes `parts` as `multipart/form-data` and returns the raw response.
@@ -402,7 +428,13 @@ impl Galaxy {
         let response = self
             .send_multipart_raw(method, path, query, headers, parts, apply_auth, overrides)
             .await?;
-        crate::http::decode_json(response, self.inner.max_response_size).await
+        let read_deadline = self.body_deadline(overrides, true);
+        crate::http::read_with_deadline(
+            &*self.inner.sleep,
+            read_deadline,
+            crate::http::decode_json(response, self.inner.max_response_size),
+        )
+        .await
     }
 
     /// Like [`send_multipart_parts`](Self::send_multipart_parts) but for operations that return no content.
@@ -420,7 +452,13 @@ impl Galaxy {
         let response = self
             .send_multipart_raw(method, path, query, headers, parts, apply_auth, overrides)
             .await?;
-        crate::http::decode_empty(response, self.inner.max_response_size).await
+        let read_deadline = self.body_deadline(overrides, true);
+        crate::http::read_with_deadline(
+            &*self.inner.sleep,
+            read_deadline,
+            crate::http::decode_empty(response, self.inner.max_response_size),
+        )
+        .await
     }
 
     /// Like [`send_multipart_parts`](Self::send_multipart_parts) but returns the raw response bytes.
@@ -438,7 +476,13 @@ impl Galaxy {
         let response = self
             .send_multipart_raw(method, path, query, headers, parts, apply_auth, overrides)
             .await?;
-        crate::http::decode_bytes(response, self.inner.max_response_size).await
+        let read_deadline = self.body_deadline(overrides, false);
+        crate::http::read_with_deadline(
+            &*self.inner.sleep,
+            read_deadline,
+            crate::http::decode_bytes(response, self.inner.max_response_size),
+        )
+        .await
     }
 
     /// Sends a request and returns the raw response, for streaming operations.
@@ -682,20 +726,35 @@ impl GalaxyBuilder {
 
     /// Sets the request deadline, applied to every request.
     ///
-    /// The deadline bounds each attempt **per attempt**, from dispatch
-    /// until response headers arrive — request-body upload included —
-    /// enforced uniformly by the runtime for every transport. Each retry
-    /// gets a fresh deadline, so total wall time can reach roughly
-    /// `(1 + max_retries) × timeout` plus backoff between attempts. Once
-    /// headers arrive, streamed response bodies (SSE, downloads) are never
-    /// deadline-killed.
+    /// It is enforced in two phases, each getting the **full** value rather
+    /// than a shared budget. First it bounds every attempt from dispatch
+    /// until response headers arrive — request-body upload included — with
+    /// each retry getting a fresh deadline. Then it bounds reading a
+    /// *buffered* response body, so a server that sends headers and then
+    /// stalls cannot hang the call. Total wall time for one call can
+    /// therefore reach roughly `(2 + max_retries) × timeout`, plus backoff
+    /// between attempts.
     ///
-    /// Unset, a 60-second default applies, but only to requests with
-    /// buffered non-multipart bodies: a streaming upload of unknown size
-    /// gets no default deadline, and neither does a multipart form (its
-    /// buffered file parts can be arbitrarily large). An explicit timeout
-    /// — set here or per request via `.timeout()` on an operation builder
-    /// — covers streaming and multipart uploads too.
+    /// A body-read timeout is never retried: the request already reached
+    /// the server and may not be idempotent, so it fails straight through
+    /// as a transport timeout — unlike a stalled header phase, which still
+    /// gets `max_retries` attempts. A stalled *error* body is cut off the
+    /// same way, surfacing as that transport timeout instead of the
+    /// status-carrying API error its headers announced.
+    ///
+    /// Streamed response bodies (SSE, WebSocket) are never deadline-killed:
+    /// they are framed incrementally and never take the buffered read path.
+    ///
+    /// Unset, a 60-second default applies only where size is bounded by
+    /// construction — requests with buffered non-multipart bodies (a
+    /// streaming upload of unknown size gets no default deadline, and
+    /// neither does a multipart form, whose file parts can be arbitrarily
+    /// large) and JSON, no-content, or pagination-page response bodies. A
+    /// binary download never gets the default. An explicit timeout — set
+    /// here or per request via `.timeout()` on an operation builder —
+    /// covers all of them, downloads included, so give a download-heavy
+    /// operation its own per-request timeout when a client-wide one is too
+    /// tight.
     pub fn timeout(mut self, timeout: Duration) -> Self {
         self.timeout = Some(timeout);
         self

@@ -23,7 +23,19 @@ async fn smoke() {
         .await;
         if let Err(error) = result {
             if is_smoke_failure(&error) {
-                failures.push(format!("{}: {error}", "GET /planets"));
+                failures.push(format!("{}: {error}", "GET /planets [required params]"));
+            }
+        }
+    }
+    {
+        let result: Result<(), Error> = async {
+            let _ = client.planets().list_all_data().limit(10).offset(0).send().await?;
+            Ok(())
+        }
+        .await;
+        if let Err(error) = result {
+            if is_smoke_failure(&error) {
+                failures.push(format!("{}: {error}", "GET /planets [all params]"));
             }
         }
     }
@@ -78,7 +90,7 @@ async fn smoke() {
     #[cfg(feature = "multipart")]
     {
         let result: Result<(), Error> = async {
-            let _ = client.planets().upload_image(1).send().await?;
+            let _ = client.planets().delte_image(1).send().await?;
             Ok(())
         }
         .await;

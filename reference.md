@@ -42,7 +42,7 @@ Delete a planet
 - HTTP: `DELETE /planets/{planetId}`
 - Errors: `404`
 
-### client.planets().upload_image(…)
+### client.planets().delte_image(…)
 
 Upload an image to a planet
 

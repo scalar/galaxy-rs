@@ -224,7 +224,7 @@ impl RetryPolicy {
 
 /// Sends a request through `transport`, retrying transient failures.
 ///
-/// The request is replayed via [`clone_request`] for each attempt; a
+/// The request is replayed via `clone_request` for each attempt; a
 /// non-replayable body (a one-shot stream, where [`SdkBody::try_replay`]
 /// returns `None`) disables retries and is sent exactly once — use
 /// `SdkBody::from_retryable_stream` to opt a streamed upload into retries.
@@ -241,11 +241,12 @@ impl RetryPolicy {
 /// to buffered non-multipart request bodies and passes `None` for streaming
 /// and multipart uploads (an explicit caller-set timeout is passed for every
 /// request — the caller asked for it). Once headers arrive the response body
-/// is a stream, and a slow or long-lived body (SSE, large download) is never
-/// deadline-killed.
+/// is a stream and leaves this function unbounded: a *streamed* body (SSE,
+/// download) is never deadline-killed, while a *buffered* one is bounded
+/// separately by [`read_with_deadline`].
 ///
 /// `keyed` is set by the caller when the request carries an idempotency key, so
-/// a possibly-processed failure (see [`should_retry_status`]) on a
+/// a possibly-processed failure (see `should_retry_status`) on a
 /// non-idempotent method (POST/PATCH) can still be safely replayed — the
 /// server deduplicates the retry by that key.
 ///
@@ -341,8 +342,9 @@ pub async fn send_with_retries(
 /// transport future cancels the in-flight request. The race covers everything
 /// up to response headers, request-body upload included (which is why the
 /// client only defaults a deadline for buffered bodies); the response *body*
-/// is a stream consumed after this function returns and is intentionally
-/// outside the race.
+/// is a stream consumed after this function returns, bounded separately by
+/// [`read_with_deadline`] when it is buffered and left unbounded when it is
+/// streamed.
 async fn execute_with_deadline(
     transport: &dyn Transport,
     sleep: &dyn Sleep,
@@ -359,6 +361,53 @@ async fn execute_with_deadline(
                 format!("no response headers within the {limit:?} deadline"),
             )),
         },
+    }
+}
+
+/// Bounds a buffered response-body read by `deadline`.
+///
+/// [`send_with_retries`] races the transport against the deadline only up to
+/// response **headers**; the body is a stream consumed afterwards, deliberately
+/// left unbounded so SSE and long downloads are not killed mid-flight. That is
+/// right for streaming and wrong for everything else — a server that sends
+/// headers and then stalls hangs an ordinary [`decode_json`] forever, and the
+/// response size cap does not help because it bounds memory, not time.
+///
+/// Wrapping the *decode* rather than the transport is what keeps streaming
+/// opted out for free: streamed responses are handed back raw and never come
+/// through here.
+///
+/// This sits *outside* [`send_with_retries`] on purpose, so a body timeout gets
+/// zero retries — the request already reached the server and may not be
+/// idempotent — while a stalled header phase still gets `max_retries` attempts.
+///
+/// # Errors
+///
+/// Returns [`Error::Transport`] with [`TransportErrorKind::Timeout`] when the
+/// body did not finish arriving within `deadline`, and otherwise whatever the
+/// wrapped read returned. The bound covers the non-success path too, so a server
+/// that sends a failing status and then stalls its error body reports that
+/// timeout rather than the [`Error::Api`] the status announced — waiting for
+/// that body is exactly the hang this exists to stop.
+pub async fn read_with_deadline<T>(
+    sleep: &dyn Sleep,
+    deadline: Option<Duration>,
+    read: impl std::future::Future<Output = Result<T, Error>>,
+) -> Result<T, Error> {
+    let Some(limit) = deadline else {
+        return read.await;
+    };
+    // `select` needs both futures `Unpin`; pinning to the stack gives that
+    // without an allocation. Losing the race drops the read future, which
+    // cancels the in-flight body stream.
+    let read = std::pin::pin!(read);
+    let timer = std::pin::pin!(sleep.sleep(limit));
+    match select(read, timer).await {
+        Either::Left((result, _timer)) => result,
+        Either::Right(((), _read)) => Err(Error::from(TransportError::new(
+            TransportErrorKind::Timeout,
+            format!("response body not fully received within the {limit:?} deadline"),
+        ))),
     }
 }
 
@@ -437,7 +486,7 @@ pub(crate) async fn collect_truncated(body: SdkBody, cap: usize) -> (Bytes, bool
 /// Success bodies are deserialized into `T`. For operations that return no
 /// content, use [`decode_empty`] instead so an empty 2xx body is not fed to a
 /// JSON deserializer. `cap` bounds how many body bytes are buffered (see
-/// [`collect_capped`]).
+/// `collect_capped`).
 ///
 /// # Errors
 ///
@@ -486,7 +535,7 @@ pub async fn decode_json<T: DeserializeOwned>(response: http::Response<SdkBody>,
 /// Used for operations whose success response is a non-JSON payload
 /// (`application/octet-stream`, `text/csv`, etc.): the bytes are returned
 /// verbatim rather than fed to a JSON deserializer. `cap` bounds how many body
-/// bytes are buffered (see [`collect_capped`]).
+/// bytes are buffered (see `collect_capped`).
 ///
 /// # Errors
 ///
@@ -516,7 +565,7 @@ pub async fn decode_bytes(response: http::Response<SdkBody>, cap: usize) -> Resu
 
 /// Consumes a no-content response, mapping non-success statuses to [`ApiError`].
 ///
-/// `cap` bounds how many error-body bytes are kept (see [`collect_truncated`]);
+/// `cap` bounds how many error-body bytes are kept (see `collect_truncated`);
 /// a success response's body is drained (bounded) rather than parsed, so a
 /// keep-alive connection stays reusable even when a "no content" operation
 /// returns stray body bytes.
@@ -1160,6 +1209,117 @@ mod tests {
             .expect("scripted attempts cannot fail at the transport level");
         assert_eq!(response.status(), 500);
         assert_eq!(transport.calls(), 1);
+    }
+
+    #[tokio::test]
+    async fn a_stalled_response_body_is_cut_off_by_the_deadline() {
+        // Headers arrive, then the body never finishes. `send_with_retries`
+        // races only up to headers, so without this bound a buffered decode
+        // waits forever — the size cap bounds memory, not time.
+        let stalled = futures_util::stream::pending::<Result<Bytes, TransportError>>();
+        let response = http::Response::builder()
+            .status(200)
+            .body(SdkBody::from_stream(stalled))
+            .expect("statically valid response parts must build");
+        let sleep = RecordingSleep::default();
+
+        let error = read_with_deadline(
+            &sleep,
+            Some(Duration::from_secs(1)),
+            decode_json::<serde_json::Value>(response, 1024),
+        )
+        .await
+        .expect_err("a body that never arrives must not resolve");
+
+        assert!(matches!(error, Error::Transport(_)), "{error:?}");
+        assert_eq!(sleep.delays(), vec![Duration::from_secs(1)]);
+    }
+
+    #[tokio::test]
+    async fn a_body_that_arrives_in_time_is_unaffected_by_the_deadline() {
+        let response = http::Response::builder()
+            .status(200)
+            .body(SdkBody::from_bytes(r#"{"ok":true}"#))
+            .expect("statically valid response parts must build");
+        let sleep = RecordingSleep::default();
+
+        let value: serde_json::Value =
+            read_with_deadline(&sleep, Some(Duration::from_secs(1)), decode_json(response, 1024))
+                .await
+                .expect("a buffered body decodes well within the deadline");
+
+        assert_eq!(value["ok"], serde_json::Value::Bool(true));
+    }
+
+    #[tokio::test]
+    async fn an_unset_deadline_leaves_the_read_unbounded() {
+        // `None` is the streaming carve-out's shape: the read future is awaited
+        // directly, with no timer racing it.
+        let response = http::Response::builder()
+            .status(200)
+            .body(SdkBody::from_bytes(r#"{"ok":true}"#))
+            .expect("statically valid response parts must build");
+        let sleep = RecordingSleep::default();
+
+        let value: serde_json::Value = read_with_deadline(&sleep, None, decode_json(response, 1024))
+            .await
+            .expect("an unbounded read still decodes");
+
+        assert_eq!(value["ok"], serde_json::Value::Bool(true));
+        assert!(sleep.delays().is_empty(), "no timer may be armed without a deadline");
+    }
+
+    #[tokio::test]
+    async fn a_non_success_body_under_a_deadline_still_reports_the_api_error() {
+        // The deadline wraps the whole decode, so it bounds error-body buffering
+        // too. An error body that does arrive must therefore keep reaching the
+        // caller as a status-carrying `Error::Api`, never flattened to a timeout.
+        let response = http::Response::builder()
+            .status(503)
+            .header("x-request-id", "req_503")
+            .body(SdkBody::from_bytes(r#"{"message":"upstream down"}"#))
+            .expect("statically valid response parts must build");
+        let sleep = RecordingSleep::default();
+
+        let error = read_with_deadline(
+            &sleep,
+            Some(Duration::from_secs(1)),
+            decode_json::<serde_json::Value>(response, 1024),
+        )
+        .await
+        .expect_err("a 503 must not decode as success");
+
+        match error {
+            Error::Api(api) => {
+                assert_eq!(api.status, 503);
+                assert_eq!(api.request_id.as_deref(), Some("req_503"));
+            }
+            other => panic!("expected Error::Api, got {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn a_stalled_page_body_is_cut_off_by_the_deadline() {
+        // Pagination buffers each page the same way a single send buffers its
+        // body, and does it in a loop — an unbounded page read hangs a pager
+        // once per page. `page_from_response` lives in the generated client, so
+        // this stands in for it with the same `collect_capped` shape.
+        let stalled = futures_util::stream::pending::<Result<Bytes, TransportError>>();
+        let response = http::Response::builder()
+            .status(200)
+            .body(SdkBody::from_stream(stalled))
+            .expect("statically valid response parts must build");
+        let sleep = RecordingSleep::default();
+
+        let error = read_with_deadline(&sleep, Some(Duration::from_secs(2)), async move {
+            let (_parts, body) = response.into_parts();
+            collect_capped(body, 1024).await
+        })
+        .await
+        .expect_err("a page body that never arrives must not resolve");
+
+        assert!(matches!(error, Error::Transport(_)), "{error:?}");
+        assert_eq!(sleep.delays(), vec![Duration::from_secs(2)]);
     }
 
     #[tokio::test]

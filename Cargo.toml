@@ -3,9 +3,11 @@ name = "scalar-galaxy"
 version = "0.2.0" # x-release-please-version
 edition = "2024"
 rust-version = "1.85"
-description = "The Scalar Galaxy is an example OpenAPI document to test OpenAPI tools and libraries. It's a fictional universe with fictional planets and fictional data."
+description = "Rust library to access the Scalar Galaxy API"
 authors = ["Scalar Galaxy"]
 license = "Apache-2.0"
+repository = "https://github.com/scalar/galaxy-rs"
+homepage = "https://github.com/scalar/galaxy-rs"
 keywords = ["api", "sdk", "client"]
 categories = ["api-bindings"]
 

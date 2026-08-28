@@ -49,7 +49,7 @@ pub struct Satellite {
     #[serde(default, skip_serializing)]
     pub r#type: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub orbit: Option<serde_json::Value>,
+    pub orbit: Option<SatelliteOrbit>,
 }
 
 impl Satellite {
@@ -67,4 +67,17 @@ impl Satellite {
             orbit: None,
         }
     }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct SatelliteOrbit {
+    /// A planet in the Scalar Galaxy
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub planet: Option<Planet>,
+    /// Orbital period in Earth days
+    #[serde(rename = "orbitalPeriod", default, skip_serializing_if = "Option::is_none")]
+    pub orbital_period: Option<f64>,
+    /// Average distance from the planet in kilometers
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub distance: Option<f64>,
 }
