@@ -10,7 +10,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-scalar-galaxy = "0.1.0" # x-release-please-version
+scalar-galaxy = "0.2.0" # x-release-please-version
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 ```
 
@@ -276,7 +276,9 @@ Response bodies are untrusted, so the runtime bounds them by default:
   are consumed incrementally and are exempt.
 - Each attempt carries a 60-second deadline unless one is set explicitly; it
   covers request-body upload through response headers, and every retry gets a
-  fresh one.
+  fresh one. Reading a *buffered* response body is bounded the same way, so a
+  server that sends headers and then stalls cannot hang the call. Streaming
+  responses are exempt.
 - The bundled backend follows **no** redirects: a followed redirect can
   re-send credentials to a host the caller never chose. A next-page link that
   points at another origin is refused for the same reason.

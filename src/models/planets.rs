@@ -18,10 +18,10 @@ pub struct Planet {
     #[serde(rename = "habitabilityIndex", default, skip_serializing_if = "Option::is_none")]
     pub habitability_index: Option<f64>,
     #[serde(rename = "physicalProperties", default, skip_serializing_if = "Option::is_none")]
-    pub physical_properties: Option<serde_json::Value>,
+    pub physical_properties: Option<PlanetPhysicalProperties>,
     /// Atmospheric composition
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub atmosphere: Option<Vec<serde_json::Value>>,
+    pub atmosphere: Option<Vec<PlanetAtmosphere>>,
     #[serde(rename = "discoveredAt", default, skip_serializing_if = "Option::is_none")]
     pub discovered_at: Option<chrono::DateTime<chrono::FixedOffset>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -79,7 +79,7 @@ pub struct PaginatedResource {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data: Option<Vec<serde_json::Value>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub meta: Option<serde_json::Value>,
+    pub meta: Option<PaginatedResourceMeta>,
 }
 
 ///
@@ -87,7 +87,7 @@ pub struct PaginatedResource {
 /// additively in future versions without a breaking release.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
-pub struct PlanetsUploadImageResponse {
+pub struct PlanetsDelteImageResponse {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub message: Option<String>,
     /// The URL where the uploaded image can be accessed
@@ -105,8 +105,69 @@ pub struct PlanetsUploadImageResponse {
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-pub struct PlanetsUploadImageBody {
+pub struct PlanetsDelteImageBody {
     /// The image file to upload
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub image: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct PlanetPhysicalProperties {
+    /// Mass in Earth masses (must be greater than 0)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mass: Option<f64>,
+    /// Radius in Earth radii (must be greater than 0)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub radius: Option<f64>,
+    /// Surface gravity in Earth g
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gravity: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub temperature: Option<PlanetPhysicalPropertiesTemperature>,
+    /// Additional properties not captured by the named fields.
+    #[serde(flatten)]
+    pub additional_properties: std::collections::HashMap<String, f64>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct PlanetPhysicalPropertiesTemperature {
+    /// Minimum temperature in Kelvin
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub min: Option<f64>,
+    /// Maximum temperature in Kelvin
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max: Option<f64>,
+    /// Average temperature in Kelvin
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub average: Option<f64>,
+    /// Additional properties not captured by the named fields.
+    #[serde(flatten)]
+    pub additional_properties: std::collections::HashMap<String, f64>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct PlanetAtmosphere {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub compound: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub percentage: Option<f64>,
+    /// Additional properties not captured by the named fields.
+    #[serde(flatten)]
+    pub additional_properties: std::collections::HashMap<String, String>,
+}
+
+///
+/// Response-only model, marked `#[non_exhaustive]`: fields may be added
+/// additively in future versions without a breaking release.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct PaginatedResourceMeta {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub limit: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub offset: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub total: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub next: Option<String>,
 }

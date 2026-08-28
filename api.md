@@ -105,10 +105,10 @@ Got a crazy good photo of a planet? Share it with the world!
 
 | Direction | Type |
 | --- | --- |
-| Response | [`PlanetsUploadImageResponse`](./src/models/planets.rs) |
+| Response | [`PlanetsDelteImageResponse`](./src/models/planets.rs) |
 
 ```rust
-let response = client.planets().upload_image(1).send().await?;
+let response = client.planets().delte_image(1).send().await?;
 ```
 
 ## `CelestialBodies`
