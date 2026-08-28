@@ -92,3 +92,16 @@ jobs:
         with:
           command: check
           command-arguments: advisories licenses
+
+  # Public-API semver gate. `cargo-semver-checks` diffs this crate's public API
+  # against the newest version already on crates.io and fails when a change is
+  # breaking but the version bump is not, so a breaking change cannot reach
+  # consumers labelled as a patch. It is a hard failure, never advisory: an
+  # allowed-to-fail semver check is the same as no semver check. Emitted only
+  # for crates that actually publish — there is no baseline to diff against
+  # otherwise.
+  semver-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: obi1kenobi/cargo-semver-checks-action@6b69fcf40e9b5fb17adeb57e4b6ecd020649a239 # v2.9
