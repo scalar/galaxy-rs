@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.1](https://github.com/scalar/galaxy-rs/compare/v0.3.0...v0.3.1) (2026-08-31)
+
+
+### Chores
+
+* **api:** regenerate SDK ([35e3105](https://github.com/scalar/galaxy-rs/commit/35e31056241773da5fb5ea5b0cc76144fdc75c5b))
+* **api:** update generated SDK content ([9357600](https://github.com/scalar/galaxy-rs/commit/9357600112c3b621ea54d2c4eedd3fbd1dcdd9a6))
+
 ## [0.3.0](https://github.com/scalar/galaxy-rs/compare/v0.2.0...v0.3.0) (2026-08-28)
 
 
