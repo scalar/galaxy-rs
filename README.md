@@ -10,7 +10,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-scalar-galaxy = "0.3.1" # x-release-please-version
+scalar-galaxy = "0.3.2" # x-release-please-version
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 ```
 
