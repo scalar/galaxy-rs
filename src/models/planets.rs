@@ -15,14 +15,24 @@ pub struct Planet {
     #[serde(default, skip_serializing)]
     pub r#type: String,
     /// A score from 0 to 1 indicating potential habitability
-    #[serde(rename = "habitabilityIndex", default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "habitabilityIndex",
+        default,
+        skip_serializing_if = "Option::is_none",
+        serialize_with = "crate::number::option::serialize"
+    )]
     pub habitability_index: Option<f64>,
     #[serde(rename = "physicalProperties", default, skip_serializing_if = "Option::is_none")]
     pub physical_properties: Option<PlanetPhysicalProperties>,
     /// Atmospheric composition
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub atmosphere: Option<Vec<PlanetAtmosphere>>,
-    #[serde(rename = "discoveredAt", default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "discoveredAt",
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "crate::datetime::option::deserialize"
+    )]
     pub discovered_at: Option<chrono::DateTime<chrono::FixedOffset>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub image: Option<String>,
@@ -33,7 +43,12 @@ pub struct Planet {
     pub creator: Option<User>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tags: Option<Vec<String>>,
-    #[serde(rename = "lastUpdated", default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "lastUpdated",
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "crate::datetime::option::deserialize"
+    )]
     pub last_updated: Option<chrono::DateTime<chrono::FixedOffset>>,
     /// URL which gets invoked upon a successful operation
     #[serde(rename = "successCallbackUrl", default, skip_serializing_if = "Option::is_none")]
@@ -94,7 +109,12 @@ pub struct PlanetsDelteImageResponse {
     #[serde(rename = "imageUrl", default, skip_serializing_if = "Option::is_none")]
     pub image_url: Option<String>,
     /// Timestamp when the image was uploaded
-    #[serde(rename = "uploadedAt", default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "uploadedAt",
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "crate::datetime::option::deserialize"
+    )]
     pub uploaded_at: Option<chrono::DateTime<chrono::FixedOffset>>,
     /// Size of the uploaded image in bytes
     #[serde(rename = "fileSize", default, skip_serializing_if = "Option::is_none")]
@@ -114,13 +134,25 @@ pub struct PlanetsDelteImageBody {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct PlanetPhysicalProperties {
     /// Mass in Earth masses (must be greater than 0)
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        serialize_with = "crate::number::option::serialize"
+    )]
     pub mass: Option<f64>,
     /// Radius in Earth radii (must be greater than 0)
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        serialize_with = "crate::number::option::serialize"
+    )]
     pub radius: Option<f64>,
     /// Surface gravity in Earth g
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        serialize_with = "crate::number::option::serialize"
+    )]
     pub gravity: Option<f64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub temperature: Option<PlanetPhysicalPropertiesTemperature>,
@@ -132,13 +164,25 @@ pub struct PlanetPhysicalProperties {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct PlanetPhysicalPropertiesTemperature {
     /// Minimum temperature in Kelvin
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        serialize_with = "crate::number::option::serialize"
+    )]
     pub min: Option<f64>,
     /// Maximum temperature in Kelvin
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        serialize_with = "crate::number::option::serialize"
+    )]
     pub max: Option<f64>,
     /// Average temperature in Kelvin
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        serialize_with = "crate::number::option::serialize"
+    )]
     pub average: Option<f64>,
     /// Additional properties not captured by the named fields.
     #[serde(flatten)]
@@ -149,7 +193,11 @@ pub struct PlanetPhysicalPropertiesTemperature {
 pub struct PlanetAtmosphere {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub compound: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        serialize_with = "crate::number::option::serialize"
+    )]
     pub percentage: Option<f64>,
     /// Additional properties not captured by the named fields.
     #[serde(flatten)]

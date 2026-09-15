@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.4.0](https://github.com/scalar/galaxy-rs/compare/v0.3.1...v0.4.0) (2026-09-15)
+
+
+### ⚠ BREAKING CHANGES
+
+* **api:** 3 breaking changes to the SDK surface.
+    - Property `planet.habitabilityIndex` type changed from `number<float>` to `number<float>`.
+    - Property `planet.physicalProperties` type changed from `object` to `object`.
+    - Property `planet.atmosphere` type changed from `Array<object>` to `Array<object>`.
+
+### Features
+
+* **api:** update property planet.habitabilityIndex (+3 more changes) ([1d0d377](https://github.com/scalar/galaxy-rs/commit/1d0d377fcabb9b53b52f90ea075d290ff1000c3e))
+
+
+### Chores
+
+* **api:** regenerate SDK ([66a60c0](https://github.com/scalar/galaxy-rs/commit/66a60c09e31aebfba2b71db7e72f0d4dc90788f4))
+
 ## [0.3.1](https://github.com/scalar/galaxy-rs/compare/v0.3.0...v0.3.1) (2026-08-31)
 
 
