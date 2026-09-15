@@ -44,7 +44,11 @@ pub struct Satellite {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     /// Diameter in kilometers
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        serialize_with = "crate::number::option::serialize"
+    )]
     pub diameter: Option<f64>,
     #[serde(default, skip_serializing)]
     pub r#type: String,
@@ -75,9 +79,18 @@ pub struct SatelliteOrbit {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub planet: Option<Planet>,
     /// Orbital period in Earth days
-    #[serde(rename = "orbitalPeriod", default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "orbitalPeriod",
+        default,
+        skip_serializing_if = "Option::is_none",
+        serialize_with = "crate::number::option::serialize"
+    )]
     pub orbital_period: Option<f64>,
     /// Average distance from the planet in kilometers
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        serialize_with = "crate::number::option::serialize"
+    )]
     pub distance: Option<f64>,
 }
