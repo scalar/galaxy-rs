@@ -1,7 +1,7 @@
 {
   "name": "ScalarGalaxy",
   "slug": "scalarGalaxy",
-  "generatorVersion": "0.32.0",
+  "generatorVersion": "0.32.14",
   "servers": [
     "https://galaxy.scalar.com",
     "{protocol}://void.scalar.com/{path}"
@@ -379,7 +379,10 @@
               "kind": "primitive",
               "type": "number",
               "format": "float",
-              "validation": {}
+              "validation": {
+                "minimum": 0,
+                "maximum": 1
+              }
             }
           },
           {
@@ -404,7 +407,10 @@
                   "type": {
                     "kind": "primitive",
                     "type": "number",
-                    "format": "float"
+                    "format": "float",
+                    "validation": {
+                      "exclusiveMinimum": 0
+                    }
                   }
                 },
                 {
@@ -421,7 +427,10 @@
                   "type": {
                     "kind": "primitive",
                     "type": "number",
-                    "format": "float"
+                    "format": "float",
+                    "validation": {
+                      "exclusiveMinimum": 0
+                    }
                   }
                 },
                 {
@@ -556,7 +565,10 @@
                     "type": {
                       "kind": "primitive",
                       "type": "number",
-                      "format": "float"
+                      "format": "float",
+                      "validation": {
+                        "exclusiveMaximum": 100
+                      }
                     }
                   }
                 ],
@@ -1600,7 +1612,27 @@
         "publicAliases": []
       },
       "errorResponses": [],
-      "responseLinks": [],
+      "responseLinks": [
+        {
+          "status": "200",
+          "name": "GetFirstPlanet",
+          "description": "Retrieve the first planet when the response contains at least one planet.",
+          "operationId": "getPlanet",
+          "parameters": {
+            "path.planetId": "$response.body#/data/0/id"
+          }
+        },
+        {
+          "status": "200",
+          "name": "FirstPage",
+          "description": "Return to the first page using the requested page size.",
+          "operationId": "getAllData",
+          "parameters": {
+            "query.limit": "$request.query.limit",
+            "query.offset": "0"
+          }
+        }
+      ],
       "transport": "http"
     },
     {
@@ -1805,7 +1837,27 @@
           ]
         }
       ],
-      "responseLinks": [],
+      "responseLinks": [
+        {
+          "status": "201",
+          "name": "GetPlanet",
+          "description": "Retrieve the planet using the ID returned in the response.",
+          "operationId": "getPlanet",
+          "parameters": {
+            "planetId": "$response.body#/id"
+          }
+        },
+        {
+          "status": "201",
+          "name": "UpdatePlanet",
+          "description": "Update the created planet using its ID and response body.",
+          "operationRef": "#/paths/~1planets~1%7BplanetId%7D/put",
+          "parameters": {
+            "planetId": "$response.body#/id"
+          },
+          "requestBody": "$response.body"
+        }
+      ],
       "transport": "http"
     },
     {
@@ -1891,7 +1943,17 @@
           ]
         }
       ],
-      "responseLinks": [],
+      "responseLinks": [
+        {
+          "status": "200",
+          "name": "DeletePlanet",
+          "description": "Delete this planet using the ID from the request path.",
+          "operationId": "deletePlanet",
+          "parameters": {
+            "planetId": "$request.path.planetId"
+          }
+        }
+      ],
       "transport": "http"
     },
     {
@@ -2119,7 +2181,17 @@
           ]
         }
       ],
-      "responseLinks": [],
+      "responseLinks": [
+        {
+          "status": "200",
+          "name": "GetPlanet",
+          "description": "Retrieve the planet using the ID returned in the response.",
+          "operationId": "getPlanet",
+          "parameters": {
+            "planetId": "$response.body#/id"
+          }
+        }
+      ],
       "transport": "http"
     },
     {

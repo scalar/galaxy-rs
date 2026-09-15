@@ -782,6 +782,35 @@ pub fn scalar_value<T: Serialize>(value: &T) -> String {
     match serde_json::to_value(value) {
         Ok(serde_json::Value::String(text)) => text,
         Ok(serde_json::Value::Null) => String::new(),
+        // A `type: number` param is an `f64`, so `to_string` renders `limit=100.0`
+        // where the document means `limit=100`. Model fields get the same
+        // treatment through `crate::number`, but a builder param never passes
+        // through a model, so the rule is applied here too. Inlined rather than
+        // shared with `crate::number`: that module is capability-gated and this
+        // one is unconditional core runtime.
+        Ok(serde_json::Value::Number(number)) => {
+            // An `integer` param already holds the exact value in `i64`/`u64`, so
+            // it is rendered straight from there. Routing it through `f64` first
+            // would round it: `9007199254740993` (2^53 + 1) is not representable,
+            // and the nearest `f64` is 2^53 — which still passes the "is this an
+            // exact integer" guard below and would silently ship an off-by-one.
+            if let Some(integer) = number.as_i64() {
+                integer.to_string()
+            } else if let Some(unsigned) = number.as_u64() {
+                unsigned.to_string()
+            } else {
+                // Only a genuine `f64` reaches here, so the reshape below cannot
+                // lose an integer that a wider type was holding exactly.
+                match number.as_f64() {
+                    Some(float)
+                        if float.is_finite() && float.fract() == 0.0 && float.abs() <= 9_007_199_254_740_992.0 =>
+                    {
+                        (float as i64).to_string()
+                    }
+                    _ => number.to_string(),
+                }
+            }
+        }
         Ok(other) => other.to_string(),
         Err(_) => String::new(),
     }
@@ -1050,6 +1079,49 @@ mod tests {
         // unspecified cast rather than clamp it.
         assert_eq!(paging_count(&"NaN"), None);
         assert_eq!(paging_count(&f64::NAN), None);
+    }
+
+    #[test]
+    fn scalar_value_renders_integral_numbers_without_a_fractional_part() {
+        // A `type: number` param is an `f64`, and serde's own rendering would put
+        // `limit=100.0` on the wire where the document means `limit=100`.
+        assert_eq!(scalar_value(&100.0_f64), "100");
+        assert_eq!(scalar_value(&-100.0_f64), "-100");
+        // JSON has no signed zero to preserve.
+        assert_eq!(scalar_value(&-0.0_f64), "0");
+        // A genuinely fractional value keeps every digit.
+        assert_eq!(scalar_value(&1.5_f64), "1.5");
+        assert_eq!(scalar_value(&0.1_f64), "0.1");
+        // Past f64's exact-integer range an `as i64` cast stops describing the
+        // value the float actually holds, so the float rendering stands.
+        assert_eq!(scalar_value(&1e300_f64), serde_json::json!(1e300_f64).to_string());
+        // serde_json cannot represent a non-finite number, so it arrives as null
+        // and drops out — the same thing it did before integral rendering existed.
+        assert_eq!(scalar_value(&f64::NAN), "");
+        assert_eq!(scalar_value(&f64::INFINITY), "");
+    }
+
+    #[test]
+    fn scalar_value_keeps_full_precision_for_large_integer_params() {
+        // An `integer` param is read from `i64`/`u64` directly. Routing it through
+        // `f64` first silently rounds it: 2^53 + 1 has no `f64`, and the nearest
+        // one is 2^53 — which still looks like an exact integer, so the rounding
+        // would have shipped as a plausible-looking off-by-one.
+        assert_eq!(scalar_value(&9_007_199_254_740_993_i64), "9007199254740993");
+        assert_eq!(scalar_value(&-9_007_199_254_740_993_i64), "-9007199254740993");
+        assert_eq!(scalar_value(&9_007_199_254_740_993_u64), "9007199254740993");
+        // 2^53 itself is representable, and the boundary must not shift.
+        assert_eq!(scalar_value(&9_007_199_254_740_992_i64), "9007199254740992");
+        // The extremes of each width, including the `u64` range above `i64::MAX`
+        // that only `as_u64` can read.
+        assert_eq!(scalar_value(&i64::MAX), "9223372036854775807");
+        assert_eq!(scalar_value(&i64::MIN), "-9223372036854775808");
+        assert_eq!(scalar_value(&u64::MAX), "18446744073709551615");
+        assert_eq!(scalar_value(&9_223_372_036_854_775_808_u64), "9223372036854775808");
+        // Ordinary small integers are unchanged by the integer-first branch.
+        assert_eq!(scalar_value(&100_i64), "100");
+        assert_eq!(scalar_value(&-7_i32), "-7");
+        assert_eq!(scalar_value(&42_u32), "42");
     }
 
     #[test]
@@ -1396,21 +1468,22 @@ mod tests {
     #[cfg(feature = "tracing")]
     mod tracing_events {
         use super::*;
-        use std::sync::{Arc, Mutex};
+        use std::cell::RefCell;
+        use std::sync::OnceLock;
+
+        thread_local! {
+            /// Events seen on this thread while it is capturing, and `None` on
+            /// every thread that is not inside [`capture`] — which is what keeps
+            /// the rest of the suite's events out of an assertion here.
+            static CAPTURED: RefCell<Option<Vec<String>>> = const { RefCell::new(None) };
+        }
 
         /// A minimal `tracing::Subscriber` that renders every event it sees as
-        /// `target message field=value …` text.
+        /// `target message field=value …` text into the capturing thread's buffer.
         ///
         /// Hand-rolled rather than pulled from `tracing-subscriber`: proving
         /// redaction must not add a dev-dependency to every generated crate.
-        #[derive(Clone, Default)]
-        struct Capture(Arc<Mutex<Vec<String>>>);
-
-        impl Capture {
-            fn rendered(&self) -> String {
-                self.0.lock().expect("capture lock").join("\n")
-            }
-        }
+        struct Capture;
 
         /// Appends `name=value` for every field of an event, using the `Debug`
         /// fallback so string, integer, and `%`/`?` fields all render.
@@ -1437,9 +1510,16 @@ mod tests {
             fn record_follows_from(&self, _span: &tracing::span::Id, _follows: &tracing::span::Id) {}
 
             fn event(&self, event: &tracing::Event<'_>) {
-                let mut rendered = event.metadata().target().to_owned();
-                event.record(&mut Render(&mut rendered));
-                self.0.lock().expect("capture lock").push(rendered);
+                CAPTURED.with(|captured| {
+                    // Events reaching a thread that is not capturing are dropped:
+                    // this subscriber is global, so it also sees the events every
+                    // other test in this binary emits.
+                    if let Some(events) = captured.borrow_mut().as_mut() {
+                        let mut rendered = event.metadata().target().to_owned();
+                        event.record(&mut Render(&mut rendered));
+                        events.push(rendered);
+                    }
+                });
             }
 
             fn enter(&self, _span: &tracing::span::Id) {}
@@ -1447,12 +1527,37 @@ mod tests {
             fn exit(&self, _span: &tracing::span::Id) {}
         }
 
+        /// Runs `emit` with this thread capturing, and renders what it emitted.
+        ///
+        /// The subscriber is installed globally, once, rather than per-test with
+        /// `tracing::subscriber::with_default`. `tracing` resolves each callsite's
+        /// `Interest` the first time that callsite is reached and caches it for the
+        /// whole process, while `with_default` only registers a subscriber on the
+        /// calling thread: a sibling test racing through the same `trace::*`
+        /// callsite can therefore pin it to `Interest::never()`, and the event this
+        /// test asserts on is then dropped before any subscriber sees it. A global
+        /// subscriber that is unconditionally `enabled` makes every callsite resolve
+        /// to `Interest::always()` whichever thread reaches it first; the
+        /// thread-local buffer above, not the subscriber, is what scopes a capture
+        /// to one test.
+        fn capture(emit: impl FnOnce()) -> String {
+            static INSTALLED: OnceLock<()> = OnceLock::new();
+            INSTALLED.get_or_init(|| {
+                tracing::subscriber::set_global_default(Capture)
+                    .expect("this test binary installs no other global subscriber");
+            });
+            CAPTURED.with(|captured| *captured.borrow_mut() = Some(Vec::new()));
+            emit();
+            CAPTURED
+                .with(|captured| captured.borrow_mut().take())
+                .expect("the capture buffer was armed just above")
+                .join("\n")
+        }
+
         /// Every event the runtime emits for a retried request and a failed
-        /// decode, captured on one thread-local subscriber.
+        /// decode, captured on one thread.
         fn capture_request_and_decode_events() -> String {
-            let capture = Capture::default();
-            let sink = capture.clone();
-            tracing::subscriber::with_default(capture, || {
+            capture(|| {
                 let runtime = tokio::runtime::Builder::new_current_thread()
                     .build()
                     .expect("a current-thread runtime must build");
@@ -1481,7 +1586,6 @@ mod tests {
                         .await
                         .expect_err("an object is not a u64");
                 });
-                sink.rendered()
             })
         }
 
@@ -1530,10 +1634,7 @@ mod tests {
         /// alternative, and no part of the failed exchange's error.
         #[test]
         fn the_oauth_fallback_event_carries_no_fields() {
-            let capture = Capture::default();
-            let sink = capture.clone();
-            tracing::subscriber::with_default(capture, trace_oauth_fallback);
-            let rendered = sink.rendered();
+            let rendered = capture(trace_oauth_fallback);
             assert!(
                 rendered.contains("oauth token exchange failed"),
                 "fallback event missing: {rendered}"

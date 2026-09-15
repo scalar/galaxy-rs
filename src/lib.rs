@@ -3,10 +3,14 @@
 #![recursion_limit = "512"]
 
 pub mod client;
+#[doc(hidden)]
+pub mod datetime;
 pub mod error;
 #[doc(hidden)]
 pub mod http;
 pub mod models;
+#[doc(hidden)]
+pub mod number;
 #[doc(hidden)]
 pub mod oauth;
 pub mod resources;
