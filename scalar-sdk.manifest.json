@@ -1,7 +1,7 @@
 {
   "name": "ScalarGalaxy",
   "slug": "scalarGalaxy",
-  "generatorVersion": "0.32.14",
+  "generatorVersion": "0.36.0",
   "servers": [
     "https://galaxy.scalar.com",
     "{protocol}://void.scalar.com/{path}"
@@ -58,7 +58,6 @@
           "kind": "authorizationCode",
           "authorizationUrl": "https://galaxy.scalar.com/oauth/authorize",
           "tokenUrl": "https://galaxy.scalar.com/oauth/token",
-          "refreshUrl": "",
           "scopes": [
             "read:account",
             "write:planets",
@@ -68,7 +67,6 @@
         {
           "kind": "clientCredentials",
           "tokenUrl": "https://galaxy.scalar.com/oauth/token",
-          "refreshUrl": "",
           "scopes": [
             "read:account",
             "write:planets",
@@ -78,7 +76,6 @@
         {
           "kind": "password",
           "tokenUrl": "https://galaxy.scalar.com/oauth/token",
-          "refreshUrl": "",
           "scopes": [
             "read:account",
             "write:planets",
@@ -88,7 +85,6 @@
         {
           "kind": "implicit",
           "authorizationUrl": "https://galaxy.scalar.com/oauth/authorize",
-          "refreshUrl": "",
           "scopes": [
             "read:account",
             "write:planets",
