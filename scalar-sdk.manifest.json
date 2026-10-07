@@ -1,7 +1,7 @@
 {
   "name": "ScalarGalaxy",
   "slug": "scalarGalaxy",
-  "generatorVersion": "0.36.0",
+  "generatorVersion": "0.36.3",
   "servers": [
     "https://galaxy.scalar.com",
     "{protocol}://void.scalar.com/{path}"
