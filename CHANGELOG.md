@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.5.0](https://github.com/scalar/galaxy-rs/compare/v0.4.2...v0.5.0) (2026-10-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* **api:** 5 breaking changes to the SDK surface.
+    - Removed operation `planets.listAllData` (`GET /planets`).
+    - Removed operation `planets.delteImage` (`POST /planets/{planetId}/image`).
+    - Removed schema `ListAllDataResponseHeaders`.
+    - Removed schema `DelteImageResponseHeaders`.
+    - Removed schema `DelteImageStatus400ResponseHeaders`.
+
+### Features
+
+* **api:** remove operation planets.listAllData (+9 more changes) ([3a62748](https://github.com/scalar/galaxy-rs/commit/3a627489fc902428af329944347ee95b914fb14f))
+
+
+### Chores
+
+* **api:** regenerate SDK ([f5b62e2](https://github.com/scalar/galaxy-rs/commit/f5b62e2a28fdbc3cae5ef733b431feba845e66b1))
+
 ## [0.4.2](https://github.com/scalar/galaxy-rs/compare/v0.4.1...v0.4.2) (2026-10-07)
 
 
