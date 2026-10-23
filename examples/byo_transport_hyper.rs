@@ -98,7 +98,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .base_url(base_url)
         .transport(HyperTransport::new())
         .build()?;
-    let _ = client.planets().list_all_data().send().await?;
+    let _ = client.planets().list().send().await?;
     println!("request flowed through the hyper transport");
     Ok(())
 }

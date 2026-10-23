@@ -46,7 +46,7 @@ It's easy to say you know them all, but do you really? Retrieve all the planets 
 | Response | [`PaginatedResource`](./src/models/planets.rs) |
 
 ```rust
-let response = client.planets().list_all_data().send().await?;
+let response = client.planets().list().send().await?;
 ```
 
 ### Create a planet
@@ -105,10 +105,10 @@ Got a crazy good photo of a planet? Share it with the world!
 
 | Direction | Type |
 | --- | --- |
-| Response | [`PlanetsDelteImageResponse`](./src/models/planets.rs) |
+| Response | [`PlanetsUploadImageResponse`](./src/models/planets.rs) |
 
 ```rust
-let response = client.planets().delte_image(1).send().await?;
+let response = client.planets().upload_image(1).send().await?;
 ```
 
 ## `CelestialBodies`
