@@ -13,8 +13,8 @@ impl PlanetsResource {
     }
 
     /// Get all planets
-    pub fn list_all_data(&self) -> ListAllDataRequestBuilder {
-        ListAllDataRequestBuilder::new(self.client.clone())
+    pub fn list(&self) -> ListRequestBuilder {
+        ListRequestBuilder::new(self.client.clone())
     }
 
     /// Create a planet
@@ -39,14 +39,14 @@ impl PlanetsResource {
 
     /// Upload an image to a planet
     #[cfg(feature = "multipart")]
-    pub fn delte_image(&self, planet_id: i64) -> DelteImageRequestBuilder {
-        DelteImageRequestBuilder::new(self.client.clone(), planet_id)
+    pub fn upload_image(&self, planet_id: i64) -> UploadImageRequestBuilder {
+        UploadImageRequestBuilder::new(self.client.clone(), planet_id)
     }
 }
 
 /// It's easy to say you know them all, but do you really? Retrieve all the planets and check whether you missed one.
 #[must_use = "a request builder does nothing until `.send().await` is called"]
-pub struct ListAllDataRequestBuilder {
+pub struct ListRequestBuilder {
     client: crate::client::Galaxy,
     limit: Option<i64>,
     offset: Option<i64>,
@@ -54,7 +54,7 @@ pub struct ListAllDataRequestBuilder {
     max_retries: Option<u32>,
 }
 
-impl ListAllDataRequestBuilder {
+impl ListRequestBuilder {
     fn new(client: crate::client::Galaxy) -> Self {
         Self {
             client,
@@ -434,7 +434,7 @@ impl DeleteRequestBuilder {
 /// Got a crazy good photo of a planet? Share it with the world!
 #[cfg(feature = "multipart")]
 #[must_use = "a request builder does nothing until `.send().await` is called"]
-pub struct DelteImageRequestBuilder {
+pub struct UploadImageRequestBuilder {
     client: crate::client::Galaxy,
     planet_id: i64,
     image: Option<crate::transport::multipart::Upload>,
@@ -444,7 +444,7 @@ pub struct DelteImageRequestBuilder {
 }
 
 #[cfg(feature = "multipart")]
-impl DelteImageRequestBuilder {
+impl UploadImageRequestBuilder {
     fn new(client: crate::client::Galaxy, planet_id: i64) -> Self {
         Self {
             client,
@@ -496,7 +496,7 @@ impl DelteImageRequestBuilder {
     ///   be rendered into the request.
     /// - [`Error::Serde`](crate::error::Error::Serde) — the response body did not
     ///   match the generated model.
-    pub async fn send(self) -> Result<crate::models::PlanetsDelteImageResponse, crate::error::Error> {
+    pub async fn send(self) -> Result<crate::models::PlanetsUploadImageResponse, crate::error::Error> {
         let path = format!(
             "/planets/{}/image",
             crate::http::encode_path_param(&crate::http::scalar_value(&self.planet_id))
@@ -515,7 +515,7 @@ impl DelteImageRequestBuilder {
             max_retries: self.max_retries,
         };
         self.client
-            .send_multipart_parts::<crate::models::PlanetsDelteImageResponse>(
+            .send_multipart_parts::<crate::models::PlanetsUploadImageResponse>(
                 http::Method::POST,
                 &path,
                 &query,

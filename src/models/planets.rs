@@ -102,7 +102,7 @@ pub struct PaginatedResource {
 /// additively in future versions without a breaking release.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
-pub struct PlanetsDelteImageResponse {
+pub struct PlanetsUploadImageResponse {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub message: Option<String>,
     /// The URL where the uploaded image can be accessed
@@ -125,7 +125,7 @@ pub struct PlanetsDelteImageResponse {
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-pub struct PlanetsDelteImageBody {
+pub struct PlanetsUploadImageBody {
     /// The image file to upload
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub image: Option<String>,

@@ -33,7 +33,7 @@ use scalar_galaxy::*;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = Galaxy::builder().bearer_auth(std::env::var("BEARER_AUTH")?).build()?;
 
-    let response = client.planets().list_all_data().send().await?;
+    let response = client.planets().list().send().await?;
 
     println!("{:?}", response);
 
