@@ -277,8 +277,9 @@ Response bodies are untrusted, so the runtime bounds them by default:
 - Each attempt carries a 60-second deadline unless one is set explicitly; it
   covers request-body upload through response headers, and every retry gets a
   fresh one. Reading a *buffered* response body is bounded the same way, so a
-  server that sends headers and then stalls cannot hang the call. Streaming
-  responses are exempt.
+  server that sends headers and then stalls cannot hang the call. The default
+  skips streamed and multipart uploads and the body of a binary download, and
+  streaming responses are always exempt.
 - The bundled backend follows **no** redirects: a followed redirect can
   re-send credentials to a host the caller never chose. A next-page link that
   points at another origin is refused for the same reason.

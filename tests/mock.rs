@@ -146,13 +146,13 @@ async fn oauth_requests_only_the_configured_scopes() {
     assert!(result.is_ok(), "authenticated call failed: {result:?}");
     let recorded = mock.requests();
     let token_form = String::from_utf8_lossy(&recorded[0].body);
-    assert!(
-        token_form.contains("scope=read%3Aaccount"),
-        "the configured scope did not reach the token request"
-    );
-    assert!(
-        !token_form.contains("write%3Aplanets"),
-        "the exchange asked for a scope the caller did not configure"
+    let scope = token_form
+        .split('&')
+        .find_map(|pair| pair.strip_prefix("scope="))
+        .expect("the configured scope did not reach the token request");
+    assert_eq!(
+        scope, "read%3Aaccount",
+        "the exchange must ask for exactly the configured scope"
     );
 }
 

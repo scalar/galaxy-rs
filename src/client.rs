@@ -931,6 +931,7 @@ impl GalaxyBuilder {
                 client_id,
                 client_secret,
                 &oauth_scopes,
+                &[],
             )),
             _ => None,
         };
