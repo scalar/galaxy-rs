@@ -76,6 +76,11 @@ pub(crate) struct TokenProvider {
     client_secret: String,
     /// Space-joined `scope` parameter; empty when the flow declares no scopes.
     scope: String,
+    /// Extra form fields naming the API the token is for, sent in order after
+    /// `scope`: one `resource` pair per RFC 8707 indicator (the key repeats
+    /// rather than the values being joined), then `audience`. Empty unless the
+    /// security scheme's settings name an API.
+    target_params: &'static [(&'static str, &'static str)],
     /// The cached token. A plain `std::sync::Mutex` because every critical
     /// section is a field read/write with no await inside it.
     cache: Mutex<Option<CachedToken>>,
@@ -108,6 +113,7 @@ impl TokenProvider {
         client_id: String,
         client_secret: String,
         scope: &str,
+        target_params: &'static [(&'static str, &'static str)],
     ) -> Self {
         Self {
             token_url: base_url
@@ -116,6 +122,7 @@ impl TokenProvider {
             client_id,
             client_secret,
             scope: scope.to_string(),
+            target_params,
             cache: Mutex::new(None),
             fetch_lock: futures_util::lock::Mutex::new(()),
         }
@@ -200,6 +207,9 @@ impl TokenProvider {
             form.append_pair("grant_type", "client_credentials");
             if !self.scope.is_empty() {
                 form.append_pair("scope", &self.scope);
+            }
+            for (name, value) in self.target_params {
+                form.append_pair(name, value);
             }
             form.finish()
         };
@@ -418,6 +428,7 @@ mod tests {
             "id".to_string(),
             "secret".to_string(),
             "read write",
+            &[],
         )
     }
 
@@ -425,9 +436,16 @@ mod tests {
     fn a_relative_token_url_resolves_against_the_base() {
         let base = url::Url::parse("https://api.example.com/v1/").expect("a static base parses");
         // Path-absolute replaces the base path; an absolute token URL is untouched.
-        let relative = TokenProvider::new(&base, "/oauth/token", "id".into(), "secret".into(), "");
+        let relative = TokenProvider::new(&base, "/oauth/token", "id".into(), "secret".into(), "", &[]);
         assert_eq!(relative.token_url, "https://api.example.com/oauth/token");
-        let absolute = TokenProvider::new(&base, "https://auth.example.com/t", "id".into(), "secret".into(), "");
+        let absolute = TokenProvider::new(
+            &base,
+            "https://auth.example.com/t",
+            "id".into(),
+            "secret".into(),
+            "",
+            &[],
+        );
         assert_eq!(absolute.token_url, "https://auth.example.com/t");
     }
 

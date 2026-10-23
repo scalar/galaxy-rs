@@ -25,8 +25,8 @@ pub use client::GalaxyBuilder;
 pub use error::{ApiError, Error};
 pub use models::{
     AuthenticationCreateUserBody, CelestialBody, Credentials, PaginatedResource, PaginatedResourceMeta, Planet,
-    PlanetAtmosphere, PlanetPhysicalProperties, PlanetPhysicalPropertiesTemperature, PlanetsDelteImageBody,
-    PlanetsDelteImageResponse, Satellite, SatelliteOrbit, Token, User,
+    PlanetAtmosphere, PlanetPhysicalProperties, PlanetPhysicalPropertiesTemperature, PlanetsUploadImageBody,
+    PlanetsUploadImageResponse, Satellite, SatelliteOrbit, Token, User,
 };
 pub use webhooks::WebhookEvent;
 

@@ -49,7 +49,7 @@ async fn authenticates_requests_with_configured_credentials() {
         .build()
         .expect("client builds");
     let result: Result<(), Error> = async {
-        let _ = client.planets().list_all_data().send().await?;
+        let _ = client.planets().list().send().await?;
         Ok(())
     }
     .await;
@@ -84,13 +84,13 @@ async fn oauth_fetches_one_token_and_reuses_it() {
         .build()
         .expect("client builds");
     let result: Result<(), Error> = async {
-        let _ = client.planets().list_all_data().send().await?;
+        let _ = client.planets().list().send().await?;
         Ok(())
     }
     .await;
     assert!(result.is_ok(), "first authenticated call failed: {result:?}");
     let result: Result<(), Error> = async {
-        let _ = client.planets().list_all_data().send().await?;
+        let _ = client.planets().list().send().await?;
         Ok(())
     }
     .await;
@@ -139,20 +139,20 @@ async fn oauth_requests_only_the_configured_scopes() {
         .build()
         .expect("client builds");
     let result: Result<(), Error> = async {
-        let _ = client.planets().list_all_data().send().await?;
+        let _ = client.planets().list().send().await?;
         Ok(())
     }
     .await;
     assert!(result.is_ok(), "authenticated call failed: {result:?}");
     let recorded = mock.requests();
     let token_form = String::from_utf8_lossy(&recorded[0].body);
-    assert!(
-        token_form.contains("scope=read%3Aaccount"),
-        "the configured scope did not reach the token request"
-    );
-    assert!(
-        !token_form.contains("write%3Aplanets"),
-        "the exchange asked for a scope the caller did not configure"
+    let scope = token_form
+        .split('&')
+        .find_map(|pair| pair.strip_prefix("scope="))
+        .expect("the configured scope did not reach the token request");
+    assert_eq!(
+        scope, "read%3Aaccount",
+        "the exchange must ask for exactly the configured scope"
     );
 }
 
@@ -176,7 +176,7 @@ async fn oauth_token_endpoint_is_untouched_when_another_credential_wins() {
         .build()
         .expect("client builds");
     let result: Result<(), Error> = async {
-        let _ = client.planets().list_all_data().send().await?;
+        let _ = client.planets().list().send().await?;
         Ok(())
     }
     .await;
@@ -219,7 +219,7 @@ async fn retries_transient_429_and_succeeds() {
         .build()
         .expect("client builds");
     let result: Result<(), Error> = async {
-        let _ = client.planets().list_all_data().send().await?;
+        let _ = client.planets().list().send().await?;
         Ok(())
     }
     .await;
@@ -239,7 +239,7 @@ async fn deadline_yields_timeout_transport_error() {
         .build()
         .expect("client builds");
     let result: Result<(), Error> = async {
-        let _ = client.planets().list_all_data().send().await?;
+        let _ = client.planets().list().send().await?;
         Ok(())
     }
     .await;
@@ -264,7 +264,7 @@ async fn decodes_typed_response_from_queued_body() {
         .build()
         .expect("client builds");
     let result: Result<(), Error> = async {
-        let _ = client.planets().list_all_data().send().await?;
+        let _ = client.planets().list().send().await?;
         Ok(())
     }
     .await;
@@ -287,7 +287,7 @@ async fn oversized_response_is_rejected() {
         .build()
         .expect("client builds");
     let result: Result<(), Error> = async {
-        let _ = client.planets().list_all_data().send().await?;
+        let _ = client.planets().list().send().await?;
         Ok(())
     }
     .await;

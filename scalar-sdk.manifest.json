@@ -1,7 +1,7 @@
 {
   "name": "ScalarGalaxy",
   "slug": "scalarGalaxy",
-  "generatorVersion": "0.36.3",
+  "generatorVersion": "0.36.9",
   "servers": [
     "https://galaxy.scalar.com",
     "{protocol}://void.scalar.com/{path}"
@@ -1003,8 +1003,8 @@
       }
     },
     {
-      "name": "ListAllDataResponseHeaders",
-      "source": "ListAllDataResponseHeaders",
+      "name": "ListResponseHeaders",
+      "source": "ListResponseHeaders",
       "publicAliases": [],
       "deprecated": false,
       "type": {
@@ -1210,8 +1210,8 @@
       }
     },
     {
-      "name": "DelteImageResponseHeaders",
-      "source": "DelteImageResponseHeaders",
+      "name": "UploadImageResponseHeaders",
+      "source": "UploadImageResponseHeaders",
       "publicAliases": [],
       "deprecated": false,
       "type": {
@@ -1243,8 +1243,8 @@
       }
     },
     {
-      "name": "DelteImageStatus400ResponseHeaders",
-      "source": "DelteImageStatus400ResponseHeaders",
+      "name": "UploadImageStatus400ResponseHeaders",
+      "source": "UploadImageStatus400ResponseHeaders",
       "publicAliases": [],
       "deprecated": false,
       "type": {
@@ -1540,8 +1540,8 @@
     {
       "resource": "planets",
       "publicResource": "planets",
-      "operation": "listAllData",
-      "publicOperation": "listAllData",
+      "operation": "list",
+      "publicOperation": "list",
       "deprecated": false,
       "method": "GET",
       "path": "/planets",
@@ -1582,7 +1582,7 @@
       "publicCookieParams": [],
       "cookieParamDetails": [],
       "paramsModel": {
-        "publicName": "PlanetListAllDataParams"
+        "publicName": "PlanetListParams"
       },
       "response": {
         "status": "200",
@@ -1604,7 +1604,7 @@
         "publicAliases": []
       },
       "responseHeadersModel": {
-        "name": "ListAllDataResponseHeaders",
+        "name": "ListResponseHeaders",
         "publicAliases": []
       },
       "errorResponses": [],
@@ -2256,8 +2256,8 @@
     {
       "resource": "planets",
       "publicResource": "planets",
-      "operation": "delteImage",
-      "publicOperation": "delteImage",
+      "operation": "uploadImage",
+      "publicOperation": "uploadImage",
       "deprecated": false,
       "method": "POST",
       "path": "/planets/{planetId}/image",
@@ -2297,7 +2297,7 @@
       "publicCookieParams": [],
       "cookieParamDetails": [],
       "paramsModel": {
-        "publicName": "PlanetDelteImageParams"
+        "publicName": "PlanetUploadImageParams"
       },
       "requestBody": {
         "contentType": "multipart/form-data",
@@ -2328,7 +2328,7 @@
         ]
       },
       "responseHeadersModel": {
-        "name": "DelteImageResponseHeaders",
+        "name": "UploadImageResponseHeaders",
         "publicAliases": []
       },
       "result": {
@@ -2355,7 +2355,7 @@
             }
           ],
           "headersModel": {
-            "name": "DelteImageStatus400ResponseHeaders",
+            "name": "UploadImageStatus400ResponseHeaders",
             "publicAliases": []
           }
         },
