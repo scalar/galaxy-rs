@@ -70,7 +70,7 @@ fn convert(value: chrono::DateTime<chrono::FixedOffset>) -> Target {
 /// Deserialization shim: the one place the lenient parse is wired into serde.
 ///
 /// Every public entry point below routes through it so a container (`Option`,
-/// `Vec`, `HashMap`) can reuse serde's own impl for the container itself and
+/// `Vec`, `BTreeMap`) can reuse serde's own impl for the container itself and
 /// override only the element.
 struct Flexible(Target);
 
@@ -143,16 +143,16 @@ pub mod option_vec {
     }
 }
 
-/// The `HashMap<String, _>` field shape.
+/// The `std::collections::BTreeMap<String, _>` field shape.
 pub mod map {
     use serde::Deserialize as _;
 
     /// `#[serde(deserialize_with = "crate::datetime::map::deserialize")]`.
     pub fn deserialize<'de, D: serde::Deserializer<'de>>(
         deserializer: D,
-    ) -> Result<std::collections::HashMap<String, super::Target>, D::Error> {
+    ) -> Result<std::collections::BTreeMap<String, super::Target>, D::Error> {
         Ok(
-            std::collections::HashMap::<String, super::Flexible>::deserialize(deserializer)?
+            std::collections::BTreeMap::<String, super::Flexible>::deserialize(deserializer)?
                 .into_iter()
                 .map(|(key, value)| (key, value.0))
                 .collect(),
@@ -160,16 +160,16 @@ pub mod map {
     }
 }
 
-/// The `Option<HashMap<String, _>>` field shape.
+/// The `Option<std::collections::BTreeMap<String, _>>` field shape.
 pub mod option_map {
     use serde::Deserialize as _;
 
     /// `#[serde(deserialize_with = "crate::datetime::option_map::deserialize")]`.
     pub fn deserialize<'de, D: serde::Deserializer<'de>>(
         deserializer: D,
-    ) -> Result<Option<std::collections::HashMap<String, super::Target>>, D::Error> {
+    ) -> Result<Option<std::collections::BTreeMap<String, super::Target>>, D::Error> {
         Ok(
-            Option::<std::collections::HashMap<String, super::Flexible>>::deserialize(deserializer)?
+            Option::<std::collections::BTreeMap<String, super::Flexible>>::deserialize(deserializer)?
                 .map(|values| values.into_iter().map(|(key, value)| (key, value.0)).collect()),
         )
     }

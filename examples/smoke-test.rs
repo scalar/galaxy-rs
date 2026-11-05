@@ -54,10 +54,10 @@ async fn main() {
     });
     let client = Galaxy::from_env().expect("client builds from environment");
     let mut results: Vec<SmokeResult> = Vec::new();
-    if selected(&filter, "listAllData", "/planets") {
+    if selected(&filter, "list", "/planets") {
         let started = std::time::Instant::now();
         let result: Result<(), Error> = async {
-            let _ = client.planets().list_all_data().send().await?;
+            let _ = client.planets().list().send().await?;
             Ok(())
         }
         .await;
@@ -70,7 +70,7 @@ async fn main() {
             Err(_) => ("passed", String::new()),
         };
         results.push(SmokeResult {
-            operation: "listAllData".to_string(),
+            operation: "list".to_string(),
             method: "GET".to_string(),
             path: "/planets".to_string(),
             label: "required params".to_string(),
@@ -79,10 +79,10 @@ async fn main() {
             error,
         });
     }
-    if selected(&filter, "listAllData", "/planets") {
+    if selected(&filter, "list", "/planets") {
         let started = std::time::Instant::now();
         let result: Result<(), Error> = async {
-            let _ = client.planets().list_all_data().limit(10).offset(0).send().await?;
+            let _ = client.planets().list().limit(10).offset(0).send().await?;
             Ok(())
         }
         .await;
@@ -95,7 +95,7 @@ async fn main() {
             Err(_) => ("passed", String::new()),
         };
         results.push(SmokeResult {
-            operation: "listAllData".to_string(),
+            operation: "list".to_string(),
             method: "GET".to_string(),
             path: "/planets".to_string(),
             label: "all params".to_string(),
@@ -205,10 +205,10 @@ async fn main() {
         });
     }
     #[cfg(feature = "multipart")]
-    if selected(&filter, "delteImage", "/planets/{planetId}/image") {
+    if selected(&filter, "uploadImage", "/planets/{planetId}/image") {
         let started = std::time::Instant::now();
         let result: Result<(), Error> = async {
-            let _ = client.planets().delte_image(1).send().await?;
+            let _ = client.planets().upload_image(1).send().await?;
             Ok(())
         }
         .await;
@@ -221,7 +221,7 @@ async fn main() {
             Err(_) => ("passed", String::new()),
         };
         results.push(SmokeResult {
-            operation: "delteImage".to_string(),
+            operation: "uploadImage".to_string(),
             method: "POST".to_string(),
             path: "/planets/{planetId}/image".to_string(),
             label: "".to_string(),

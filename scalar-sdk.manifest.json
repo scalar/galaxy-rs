@@ -1,7 +1,7 @@
 {
   "name": "ScalarGalaxy",
   "slug": "scalarGalaxy",
-  "generatorVersion": "0.36.3",
+  "generatorVersion": "0.38.0",
   "servers": [
     "https://galaxy.scalar.com",
     "{protocol}://void.scalar.com/{path}"
@@ -892,119 +892,8 @@
       }
     },
     {
-      "name": "paginated_resource",
-      "source": "paginated_resource",
-      "publicAliases": [],
-      "deprecated": false,
-      "type": {
-        "kind": "object",
-        "properties": [
-          {
-            "name": "data",
-            "publicName": "data",
-            "required": false,
-            "deprecated": false,
-            "type": {
-              "kind": "array",
-              "items": {
-                "kind": "unknown"
-              }
-            }
-          },
-          {
-            "name": "meta",
-            "publicName": "meta",
-            "required": false,
-            "deprecated": false,
-            "type": {
-              "kind": "object",
-              "properties": [
-                {
-                  "name": "limit",
-                  "publicName": "limit",
-                  "required": false,
-                  "deprecated": false,
-                  "extensions": {
-                    "source": [
-                      "examples"
-                    ],
-                    "examples": 10
-                  },
-                  "type": {
-                    "kind": "primitive",
-                    "type": "integer",
-                    "format": "int64"
-                  }
-                },
-                {
-                  "name": "offset",
-                  "publicName": "offset",
-                  "required": false,
-                  "deprecated": false,
-                  "extensions": {
-                    "source": [
-                      "examples"
-                    ],
-                    "examples": 0
-                  },
-                  "type": {
-                    "kind": "primitive",
-                    "type": "integer",
-                    "format": "int64"
-                  }
-                },
-                {
-                  "name": "total",
-                  "publicName": "total",
-                  "required": false,
-                  "deprecated": false,
-                  "extensions": {
-                    "source": [
-                      "examples"
-                    ],
-                    "examples": 100
-                  },
-                  "type": {
-                    "kind": "primitive",
-                    "type": "integer",
-                    "format": "int64"
-                  }
-                },
-                {
-                  "name": "next",
-                  "publicName": "next",
-                  "required": false,
-                  "deprecated": false,
-                  "extensions": {
-                    "source": [
-                      "examples"
-                    ],
-                    "examples": "/planets?limit=10&offset=10"
-                  },
-                  "type": {
-                    "kind": "union",
-                    "variants": [
-                      {
-                        "kind": "primitive",
-                        "type": "string"
-                      },
-                      {
-                        "kind": "null"
-                      }
-                    ]
-                  }
-                }
-              ],
-              "additionalProperties": false
-            }
-          }
-        ],
-        "additionalProperties": false
-      }
-    },
-    {
-      "name": "ListAllDataResponseHeaders",
-      "source": "ListAllDataResponseHeaders",
+      "name": "ListResponseHeaders",
+      "source": "ListResponseHeaders",
       "publicAliases": [],
       "deprecated": false,
       "type": {
@@ -1210,8 +1099,8 @@
       }
     },
     {
-      "name": "DelteImageResponseHeaders",
-      "source": "DelteImageResponseHeaders",
+      "name": "UploadImageResponseHeaders",
+      "source": "UploadImageResponseHeaders",
       "publicAliases": [],
       "deprecated": false,
       "type": {
@@ -1243,8 +1132,8 @@
       }
     },
     {
-      "name": "DelteImageStatus400ResponseHeaders",
-      "source": "DelteImageStatus400ResponseHeaders",
+      "name": "UploadImageStatus400ResponseHeaders",
+      "source": "UploadImageStatus400ResponseHeaders",
       "publicAliases": [],
       "deprecated": false,
       "type": {
@@ -1540,8 +1429,8 @@
     {
       "resource": "planets",
       "publicResource": "planets",
-      "operation": "listAllData",
-      "publicOperation": "listAllData",
+      "operation": "list",
+      "publicOperation": "list",
       "deprecated": false,
       "method": "GET",
       "path": "/planets",
@@ -1582,7 +1471,7 @@
       "publicCookieParams": [],
       "cookieParamDetails": [],
       "paramsModel": {
-        "publicName": "PlanetListAllDataParams"
+        "publicName": "PlanetListParams"
       },
       "response": {
         "status": "200",
@@ -1599,12 +1488,8 @@
           }
         ]
       },
-      "responseModel": {
-        "name": "paginated_resource",
-        "publicAliases": []
-      },
       "responseHeadersModel": {
-        "name": "ListAllDataResponseHeaders",
+        "name": "ListResponseHeaders",
         "publicAliases": []
       },
       "errorResponses": [],
@@ -2256,8 +2141,8 @@
     {
       "resource": "planets",
       "publicResource": "planets",
-      "operation": "delteImage",
-      "publicOperation": "delteImage",
+      "operation": "uploadImage",
+      "publicOperation": "uploadImage",
       "deprecated": false,
       "method": "POST",
       "path": "/planets/{planetId}/image",
@@ -2297,7 +2182,7 @@
       "publicCookieParams": [],
       "cookieParamDetails": [],
       "paramsModel": {
-        "publicName": "PlanetDelteImageParams"
+        "publicName": "PlanetUploadImageParams"
       },
       "requestBody": {
         "contentType": "multipart/form-data",
@@ -2328,7 +2213,7 @@
         ]
       },
       "responseHeadersModel": {
-        "name": "DelteImageResponseHeaders",
+        "name": "UploadImageResponseHeaders",
         "publicAliases": []
       },
       "result": {
@@ -2355,7 +2240,7 @@
             }
           ],
           "headersModel": {
-            "name": "DelteImageStatus400ResponseHeaders",
+            "name": "UploadImageStatus400ResponseHeaders",
             "publicAliases": []
           }
         },

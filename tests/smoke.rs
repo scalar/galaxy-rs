@@ -17,7 +17,7 @@ async fn smoke() {
     let mut failures: Vec<String> = Vec::new();
     {
         let result: Result<(), Error> = async {
-            let _ = client.planets().list_all_data().send().await?;
+            let _ = client.planets().list().send().await?;
             Ok(())
         }
         .await;
@@ -29,7 +29,7 @@ async fn smoke() {
     }
     {
         let result: Result<(), Error> = async {
-            let _ = client.planets().list_all_data().limit(10).offset(0).send().await?;
+            let _ = client.planets().list().limit(10).offset(0).send().await?;
             Ok(())
         }
         .await;
@@ -90,7 +90,7 @@ async fn smoke() {
     #[cfg(feature = "multipart")]
     {
         let result: Result<(), Error> = async {
-            let _ = client.planets().delte_image(1).send().await?;
+            let _ = client.planets().upload_image(1).send().await?;
             Ok(())
         }
         .await;
