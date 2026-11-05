@@ -53,7 +53,7 @@ impl serde::Serialize for Seq<'_> {
 }
 
 /// A map of values, each rendered through `Integral`.
-struct Map<'a>(&'a std::collections::HashMap<String, f64>);
+struct Map<'a>(&'a std::collections::BTreeMap<String, f64>);
 
 impl serde::Serialize for Map<'_> {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -99,26 +99,26 @@ pub mod option_vec {
     }
 }
 
-/// The `HashMap<String, _>` field shape.
+/// The `std::collections::BTreeMap<String, _>` field shape.
 pub mod map {
     use serde::Serialize as _;
 
     /// `#[serde(serialize_with = "crate::number::map::serialize")]`.
     pub fn serialize<S: serde::Serializer>(
-        value: &std::collections::HashMap<String, f64>,
+        value: &std::collections::BTreeMap<String, f64>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         super::Map(value).serialize(serializer)
     }
 }
 
-/// The `Option<HashMap<String, _>>` field shape.
+/// The `Option<std::collections::BTreeMap<String, _>>` field shape.
 pub mod option_map {
     use serde::Serialize as _;
 
     /// `#[serde(serialize_with = "crate::number::option_map::serialize")]`.
     pub fn serialize<S: serde::Serializer>(
-        value: &Option<std::collections::HashMap<String, f64>>,
+        value: &Option<std::collections::BTreeMap<String, f64>>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         value.as_ref().map(super::Map).serialize(serializer)
@@ -142,7 +142,7 @@ mod tests {
         #[serde(serialize_with = "crate::number::vec::serialize")]
         l: Vec<f64>,
         #[serde(serialize_with = "crate::number::map::serialize")]
-        m: std::collections::HashMap<String, f64>,
+        m: std::collections::BTreeMap<String, f64>,
     }
 
     fn encode(value: f64) -> String {
@@ -186,7 +186,7 @@ mod tests {
 
     #[test]
     fn containers_reshape_every_element() {
-        let mut m = std::collections::HashMap::new();
+        let mut m = std::collections::BTreeMap::new();
         m.insert("fee".to_string(), 25.0);
         let encoded = serde_json::to_string(&Containers {
             o: Some(0.0),
@@ -205,7 +205,7 @@ mod tests {
         let encoded = serde_json::to_string(&Containers {
             o: None,
             l: Vec::new(),
-            m: std::collections::HashMap::new(),
+            m: std::collections::BTreeMap::new(),
         })
         .expect("encodes");
 

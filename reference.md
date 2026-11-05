@@ -93,4 +93,3 @@ Get authenticated user
 - `CelestialBody`
 - `Planet`
 - `Satellite`
-- `PaginatedResource`

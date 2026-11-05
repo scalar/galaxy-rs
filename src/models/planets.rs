@@ -6,12 +6,20 @@ use super::*;
 use serde::{Deserialize, Serialize};
 
 /// A planet in the Scalar Galaxy
+///
+/// Marked `#[non_exhaustive]` so the API can add fields without a breaking release: build it with `Planet::new` and the
+/// `with_*` setters rather than a struct literal. Fields stay public for reading.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct Planet {
     pub id: i64,
     pub name: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "crate::explicit_null::double_option"
+    )]
+    pub description: Option<Option<String>>,
     #[serde(default, skip_serializing)]
     pub r#type: String,
     /// A score from 0 to 1 indicating potential habitability
@@ -34,8 +42,12 @@ pub struct Planet {
         deserialize_with = "crate::datetime::option::deserialize"
     )]
     pub discovered_at: Option<chrono::DateTime<chrono::FixedOffset>>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub image: Option<String>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "crate::explicit_null::double_option"
+    )]
+    pub image: Option<Option<String>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub satellites: Option<Vec<Satellite>>,
     /// A user
@@ -61,8 +73,11 @@ pub struct Planet {
 impl Planet {
     /// Creates a new `Planet` from its required fields, leaving every optional one unset.
     ///
-    /// Pair it with struct-update syntax to set only the optionals you need:
-    /// `Planet { description: Some(…), ..Planet::new(id, name) }`.
+    /// The arguments follow the order the API declares these fields in. A required field the API adds is a new
+    /// argument, which is a breaking change either way.
+    ///
+    /// Set an optional field with its `with_*` setter:
+    /// `Planet::new(id, name).with_description(…)`.
     pub fn new(id: i64, name: impl Into<String>) -> Self {
         Self {
             id,
@@ -82,25 +97,185 @@ impl Planet {
             failure_callback_url: None,
         }
     }
+
+    /// Sets `description`, which `new` leaves unset.
+    ///
+    /// To send an explicit `null` instead, assign `description = Some(None)` on the built value.
+    pub fn with_description(mut self, value: impl Into<String>) -> Self {
+        self.description = Some(Some(value.into()));
+        self
+    }
+
+    /// Sets `habitability_index`, which `new` leaves unset.
+    pub fn with_habitability_index(mut self, value: f64) -> Self {
+        self.habitability_index = Some(value);
+        self
+    }
+
+    /// Sets `physical_properties`, which `new` leaves unset.
+    pub fn with_physical_properties(mut self, value: PlanetPhysicalProperties) -> Self {
+        self.physical_properties = Some(value);
+        self
+    }
+
+    /// Sets `atmosphere`, which `new` leaves unset.
+    pub fn with_atmosphere(mut self, value: Vec<PlanetAtmosphere>) -> Self {
+        self.atmosphere = Some(value);
+        self
+    }
+
+    /// Sets `discovered_at`, which `new` leaves unset.
+    pub fn with_discovered_at(mut self, value: chrono::DateTime<chrono::FixedOffset>) -> Self {
+        self.discovered_at = Some(value);
+        self
+    }
+
+    /// Sets `image`, which `new` leaves unset.
+    ///
+    /// To send an explicit `null` instead, assign `image = Some(None)` on the built value.
+    pub fn with_image(mut self, value: impl Into<String>) -> Self {
+        self.image = Some(Some(value.into()));
+        self
+    }
+
+    /// Sets `satellites`, which `new` leaves unset.
+    pub fn with_satellites(mut self, value: Vec<Satellite>) -> Self {
+        self.satellites = Some(value);
+        self
+    }
+
+    /// Sets `creator`, which `new` leaves unset.
+    pub fn with_creator(mut self, value: User) -> Self {
+        self.creator = Some(value);
+        self
+    }
+
+    /// Sets `tags`, which `new` leaves unset.
+    pub fn with_tags(mut self, value: Vec<String>) -> Self {
+        self.tags = Some(value);
+        self
+    }
+
+    /// Sets `last_updated`, which `new` leaves unset.
+    pub fn with_last_updated(mut self, value: chrono::DateTime<chrono::FixedOffset>) -> Self {
+        self.last_updated = Some(value);
+        self
+    }
+
+    /// Sets `success_callback_url`, which `new` leaves unset.
+    pub fn with_success_callback_url(mut self, value: impl Into<String>) -> Self {
+        self.success_callback_url = Some(value.into());
+        self
+    }
+
+    /// Sets `failure_callback_url`, which `new` leaves unset.
+    pub fn with_failure_callback_url(mut self, value: impl Into<String>) -> Self {
+        self.failure_callback_url = Some(value.into());
+        self
+    }
 }
 
-/// A generic paginated resource. Specializing schemas bind the item type by declaring a `$dynamicAnchor` named `itemType`, the JSON Schema 2020-12 way to express `PaginatedResource<T>`.
+/// Marked `#[non_exhaustive]` so the API can add fields without a breaking release: build it with
+/// `PlanetsListResponse::new` and the `with_*` setters rather than a struct literal. Fields stay public for reading.
 ///
-/// Response-only model, marked `#[non_exhaustive]`: fields may be added
-/// additively in future versions without a breaking release.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+/// `Default` is the empty value, every field unset. It is withdrawn if the API ever makes a field required, which
+/// breaks callers through `new` as well.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
-pub struct PaginatedResource {
+pub struct PlanetsListResponse {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub data: Option<Vec<serde_json::Value>>,
+    pub data: Option<Vec<Planet>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub meta: Option<PaginatedResourceMeta>,
+    pub meta: Option<PlanetsListResponseMeta>,
 }
 
+impl PlanetsListResponse {
+    /// Creates a new `PlanetsListResponse` from its required fields, leaving every optional one unset.
+    ///
+    /// Set an optional field with its `with_*` setter:
+    /// `PlanetsListResponse::new().with_data(…)`.
+    pub fn new() -> Self {
+        Self { data: None, meta: None }
+    }
+
+    /// Sets `data`, which `new` leaves unset.
+    pub fn with_data(mut self, value: Vec<Planet>) -> Self {
+        self.data = Some(value);
+        self
+    }
+
+    /// Sets `meta`, which `new` leaves unset.
+    pub fn with_meta(mut self, value: PlanetsListResponseMeta) -> Self {
+        self.meta = Some(value);
+        self
+    }
+}
+
+/// Marked `#[non_exhaustive]` so the API can add fields without a breaking release: build it with
+/// `PlanetsListResponseMeta::new` and the `with_*` setters rather than a struct literal. Fields stay public for
+/// reading.
 ///
-/// Response-only model, marked `#[non_exhaustive]`: fields may be added
-/// additively in future versions without a breaking release.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+/// `Default` is the empty value, every field unset. It is withdrawn if the API ever makes a field required, which
+/// breaks callers through `new` as well.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct PlanetsListResponseMeta {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub limit: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub offset: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub total: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub next: Option<String>,
+}
+
+impl PlanetsListResponseMeta {
+    /// Creates a new `PlanetsListResponseMeta` from its required fields, leaving every optional one unset.
+    ///
+    /// Set an optional field with its `with_*` setter:
+    /// `PlanetsListResponseMeta::new().with_limit(…)`.
+    pub fn new() -> Self {
+        Self {
+            limit: None,
+            offset: None,
+            total: None,
+            next: None,
+        }
+    }
+
+    /// Sets `limit`, which `new` leaves unset.
+    pub fn with_limit(mut self, value: i64) -> Self {
+        self.limit = Some(value);
+        self
+    }
+
+    /// Sets `offset`, which `new` leaves unset.
+    pub fn with_offset(mut self, value: i64) -> Self {
+        self.offset = Some(value);
+        self
+    }
+
+    /// Sets `total`, which `new` leaves unset.
+    pub fn with_total(mut self, value: i64) -> Self {
+        self.total = Some(value);
+        self
+    }
+
+    /// Sets `next`, which `new` leaves unset.
+    pub fn with_next(mut self, value: impl Into<String>) -> Self {
+        self.next = Some(value.into());
+        self
+    }
+}
+
+/// Marked `#[non_exhaustive]` so the API can add fields without a breaking release: build it with
+/// `PlanetsUploadImageResponse::new` and the `with_*` setters rather than a struct literal. Fields stay public for
+/// reading.
+///
+/// `Default` is the empty value, every field unset. It is withdrawn if the API ever makes a field required, which
+/// breaks callers through `new` as well.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct PlanetsUploadImageResponse {
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -124,14 +299,89 @@ pub struct PlanetsUploadImageResponse {
     pub mime_type: Option<String>,
 }
 
+impl PlanetsUploadImageResponse {
+    /// Creates a new `PlanetsUploadImageResponse` from its required fields, leaving every optional one unset.
+    ///
+    /// Set an optional field with its `with_*` setter:
+    /// `PlanetsUploadImageResponse::new().with_message(…)`.
+    pub fn new() -> Self {
+        Self {
+            message: None,
+            image_url: None,
+            uploaded_at: None,
+            file_size: None,
+            mime_type: None,
+        }
+    }
+
+    /// Sets `message`, which `new` leaves unset.
+    pub fn with_message(mut self, value: impl Into<String>) -> Self {
+        self.message = Some(value.into());
+        self
+    }
+
+    /// Sets `image_url`, which `new` leaves unset.
+    pub fn with_image_url(mut self, value: impl Into<String>) -> Self {
+        self.image_url = Some(value.into());
+        self
+    }
+
+    /// Sets `uploaded_at`, which `new` leaves unset.
+    pub fn with_uploaded_at(mut self, value: chrono::DateTime<chrono::FixedOffset>) -> Self {
+        self.uploaded_at = Some(value);
+        self
+    }
+
+    /// Sets `file_size`, which `new` leaves unset.
+    pub fn with_file_size(mut self, value: i64) -> Self {
+        self.file_size = Some(value);
+        self
+    }
+
+    /// Sets `mime_type`, which `new` leaves unset.
+    pub fn with_mime_type(mut self, value: impl Into<String>) -> Self {
+        self.mime_type = Some(value.into());
+        self
+    }
+}
+
+/// Marked `#[non_exhaustive]` so the API can add fields without a breaking release: build it with
+/// `PlanetsUploadImageBody::new` and the `with_*` setters rather than a struct literal. Fields stay public for reading.
+///
+/// `Default` is the empty value, every field unset. It is withdrawn if the API ever makes a field required, which
+/// breaks callers through `new` as well.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct PlanetsUploadImageBody {
     /// The image file to upload
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub image: Option<String>,
 }
 
+impl PlanetsUploadImageBody {
+    /// Creates a new `PlanetsUploadImageBody` from its required fields, leaving every optional one unset.
+    ///
+    /// Set an optional field with its `with_*` setter:
+    /// `PlanetsUploadImageBody::new().with_image(…)`.
+    pub fn new() -> Self {
+        Self { image: None }
+    }
+
+    /// Sets `image`, which `new` leaves unset.
+    pub fn with_image(mut self, value: impl Into<String>) -> Self {
+        self.image = Some(value.into());
+        self
+    }
+}
+
+/// Marked `#[non_exhaustive]` so the API can add fields without a breaking release: build it with
+/// `PlanetPhysicalProperties::new` and the `with_*` setters rather than a struct literal. Fields stay public for
+/// reading.
+///
+/// `Default` is the empty value, every field unset. It is withdrawn if the API ever makes a field required, which
+/// breaks callers through `new` as well.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct PlanetPhysicalProperties {
     /// Mass in Earth masses (must be greater than 0)
     #[serde(
@@ -158,10 +408,63 @@ pub struct PlanetPhysicalProperties {
     pub temperature: Option<PlanetPhysicalPropertiesTemperature>,
     /// Additional properties not captured by the named fields.
     #[serde(flatten)]
-    pub additional_properties: std::collections::HashMap<String, f64>,
+    pub additional_properties: std::collections::BTreeMap<String, f64>,
 }
 
+impl PlanetPhysicalProperties {
+    /// Creates a new `PlanetPhysicalProperties` from its required fields, leaving every optional one unset.
+    ///
+    /// Set an optional field with its `with_*` setter:
+    /// `PlanetPhysicalProperties::new().with_mass(…)`.
+    pub fn new() -> Self {
+        Self {
+            mass: None,
+            radius: None,
+            gravity: None,
+            temperature: None,
+            additional_properties: std::collections::BTreeMap::new(),
+        }
+    }
+
+    /// Sets `mass`, which `new` leaves unset.
+    pub fn with_mass(mut self, value: f64) -> Self {
+        self.mass = Some(value);
+        self
+    }
+
+    /// Sets `radius`, which `new` leaves unset.
+    pub fn with_radius(mut self, value: f64) -> Self {
+        self.radius = Some(value);
+        self
+    }
+
+    /// Sets `gravity`, which `new` leaves unset.
+    pub fn with_gravity(mut self, value: f64) -> Self {
+        self.gravity = Some(value);
+        self
+    }
+
+    /// Sets `temperature`, which `new` leaves unset.
+    pub fn with_temperature(mut self, value: PlanetPhysicalPropertiesTemperature) -> Self {
+        self.temperature = Some(value);
+        self
+    }
+
+    /// Adds one entry to `additional_properties`, the keys the named fields do not cover.
+    pub fn with_additional_property(mut self, key: impl Into<String>, value: f64) -> Self {
+        self.additional_properties.insert(key.into(), value);
+        self
+    }
+}
+
+/// Marked `#[non_exhaustive]` so the API can add fields without a breaking release: build it with
+/// `PlanetPhysicalPropertiesTemperature::new` and the `with_*` setters rather than a struct literal. Fields stay public
+/// for reading.
+///
+/// `Default` is the empty value, every field unset. It is withdrawn if the API ever makes a field required, which
+/// breaks callers through `new` as well.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct PlanetPhysicalPropertiesTemperature {
     /// Minimum temperature in Kelvin
     #[serde(
@@ -186,10 +489,55 @@ pub struct PlanetPhysicalPropertiesTemperature {
     pub average: Option<f64>,
     /// Additional properties not captured by the named fields.
     #[serde(flatten)]
-    pub additional_properties: std::collections::HashMap<String, f64>,
+    pub additional_properties: std::collections::BTreeMap<String, f64>,
 }
 
+impl PlanetPhysicalPropertiesTemperature {
+    /// Creates a new `PlanetPhysicalPropertiesTemperature` from its required fields, leaving every optional one unset.
+    ///
+    /// Set an optional field with its `with_*` setter:
+    /// `PlanetPhysicalPropertiesTemperature::new().with_min(…)`.
+    pub fn new() -> Self {
+        Self {
+            min: None,
+            max: None,
+            average: None,
+            additional_properties: std::collections::BTreeMap::new(),
+        }
+    }
+
+    /// Sets `min`, which `new` leaves unset.
+    pub fn with_min(mut self, value: f64) -> Self {
+        self.min = Some(value);
+        self
+    }
+
+    /// Sets `max`, which `new` leaves unset.
+    pub fn with_max(mut self, value: f64) -> Self {
+        self.max = Some(value);
+        self
+    }
+
+    /// Sets `average`, which `new` leaves unset.
+    pub fn with_average(mut self, value: f64) -> Self {
+        self.average = Some(value);
+        self
+    }
+
+    /// Adds one entry to `additional_properties`, the keys the named fields do not cover.
+    pub fn with_additional_property(mut self, key: impl Into<String>, value: f64) -> Self {
+        self.additional_properties.insert(key.into(), value);
+        self
+    }
+}
+
+/// Marked `#[non_exhaustive]` so the API can add fields without a breaking release: build it with
+/// `PlanetAtmosphere::new` and the `with_*` setters rather than a struct literal. Fields stay public for reading.
+///
+/// `Default` is the empty value, every field unset. It is withdrawn if the API ever makes a field required, which
+/// breaks callers through `new` as well.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct PlanetAtmosphere {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub compound: Option<String>,
@@ -201,21 +549,37 @@ pub struct PlanetAtmosphere {
     pub percentage: Option<f64>,
     /// Additional properties not captured by the named fields.
     #[serde(flatten)]
-    pub additional_properties: std::collections::HashMap<String, String>,
+    pub additional_properties: std::collections::BTreeMap<String, String>,
 }
 
-///
-/// Response-only model, marked `#[non_exhaustive]`: fields may be added
-/// additively in future versions without a breaking release.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[non_exhaustive]
-pub struct PaginatedResourceMeta {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub limit: Option<i64>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub offset: Option<i64>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub total: Option<i64>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub next: Option<String>,
+impl PlanetAtmosphere {
+    /// Creates a new `PlanetAtmosphere` from its required fields, leaving every optional one unset.
+    ///
+    /// Set an optional field with its `with_*` setter:
+    /// `PlanetAtmosphere::new().with_compound(…)`.
+    pub fn new() -> Self {
+        Self {
+            compound: None,
+            percentage: None,
+            additional_properties: std::collections::BTreeMap::new(),
+        }
+    }
+
+    /// Sets `compound`, which `new` leaves unset.
+    pub fn with_compound(mut self, value: impl Into<String>) -> Self {
+        self.compound = Some(value.into());
+        self
+    }
+
+    /// Sets `percentage`, which `new` leaves unset.
+    pub fn with_percentage(mut self, value: f64) -> Self {
+        self.percentage = Some(value);
+        self
+    }
+
+    /// Adds one entry to `additional_properties`, the keys the named fields do not cover.
+    pub fn with_additional_property(mut self, key: impl Into<String>, value: String) -> Self {
+        self.additional_properties.insert(key.into(), value);
+        self
+    }
 }

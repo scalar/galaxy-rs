@@ -6,7 +6,14 @@ use super::*;
 use serde::{Deserialize, Serialize};
 
 /// A user
+///
+/// Marked `#[non_exhaustive]` so the API can add fields without a breaking release: build it with `User::new` and the
+/// `with_*` setters rather than a struct literal. Fields stay public for reading.
+///
+/// `Default` is the empty value, every field unset. It is withdrawn if the API ever makes a field required, which
+/// breaks callers through `new` as well.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct User {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub id: Option<i64>,
@@ -14,25 +21,87 @@ pub struct User {
     pub name: Option<String>,
 }
 
+impl User {
+    /// Creates a new `User` from its required fields, leaving every optional one unset.
+    ///
+    /// Set an optional field with its `with_*` setter:
+    /// `User::new().with_id(…)`.
+    pub fn new() -> Self {
+        Self { id: None, name: None }
+    }
+
+    /// Sets `id`, which `new` leaves unset.
+    pub fn with_id(mut self, value: i64) -> Self {
+        self.id = Some(value);
+        self
+    }
+
+    /// Sets `name`, which `new` leaves unset.
+    pub fn with_name(mut self, value: impl Into<String>) -> Self {
+        self.name = Some(value.into());
+        self
+    }
+}
+
 /// Credentials to authenticate a user
+///
+/// Marked `#[non_exhaustive]` so the API can add fields without a breaking release: build it with `Credentials::new`
+/// and the `with_*` setters rather than a struct literal. Fields stay public for reading.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct Credentials {
     pub email: String,
     pub password: String,
 }
 
+impl Credentials {
+    /// Creates a new `Credentials` from its required fields, leaving every optional one unset.
+    ///
+    /// The arguments follow the order the API declares these fields in. A required field the API adds is a new
+    /// argument, which is a breaking change either way.
+    pub fn new(email: impl Into<String>, password: impl Into<String>) -> Self {
+        Self {
+            email: email.into(),
+            password: password.into(),
+        }
+    }
+}
+
 /// A token to authenticate a user
 ///
-/// Response-only model, marked `#[non_exhaustive]`: fields may be added
-/// additively in future versions without a breaking release.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+/// Marked `#[non_exhaustive]` so the API can add fields without a breaking release: build it with `Token::new` and the
+/// `with_*` setters rather than a struct literal. Fields stay public for reading.
+///
+/// `Default` is the empty value, every field unset. It is withdrawn if the API ever makes a field required, which
+/// breaks callers through `new` as well.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct Token {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub token: Option<String>,
 }
 
+impl Token {
+    /// Creates a new `Token` from its required fields, leaving every optional one unset.
+    ///
+    /// Set an optional field with its `with_*` setter:
+    /// `Token::new().with_token(…)`.
+    pub fn new() -> Self {
+        Self { token: None }
+    }
+
+    /// Sets `token`, which `new` leaves unset.
+    pub fn with_token(mut self, value: impl Into<String>) -> Self {
+        self.token = Some(value.into());
+        self
+    }
+}
+
+/// Marked `#[non_exhaustive]` so the API can add fields without a breaking release: build it with
+/// `AuthenticationCreateUserBody::new` and the `with_*` setters rather than a struct literal. Fields stay public for
+/// reading.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct AuthenticationCreateUserBody {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub id: Option<i64>,
@@ -45,8 +114,11 @@ pub struct AuthenticationCreateUserBody {
 impl AuthenticationCreateUserBody {
     /// Creates a new `AuthenticationCreateUserBody` from its required fields, leaving every optional one unset.
     ///
-    /// Pair it with struct-update syntax to set only the optionals you need:
-    /// `AuthenticationCreateUserBody { id: Some(…), ..AuthenticationCreateUserBody::new(email, password) }`.
+    /// The arguments follow the order the API declares these fields in. A required field the API adds is a new
+    /// argument, which is a breaking change either way.
+    ///
+    /// Set an optional field with its `with_*` setter:
+    /// `AuthenticationCreateUserBody::new(email, password).with_id(…)`.
     pub fn new(email: impl Into<String>, password: impl Into<String>) -> Self {
         Self {
             id: None,
@@ -54,5 +126,17 @@ impl AuthenticationCreateUserBody {
             email: email.into(),
             password: password.into(),
         }
+    }
+
+    /// Sets `id`, which `new` leaves unset.
+    pub fn with_id(mut self, value: i64) -> Self {
+        self.id = Some(value);
+        self
+    }
+
+    /// Sets `name`, which `new` leaves unset.
+    pub fn with_name(mut self, value: impl Into<String>) -> Self {
+        self.name = Some(value.into());
+        self
     }
 }
