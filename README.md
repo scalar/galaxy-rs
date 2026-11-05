@@ -31,7 +31,7 @@ use scalar_galaxy::*;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let client = Galaxy::builder().bearer_auth(std::env::var("BEARER_AUTH")?).build()?;
+    let client = Galaxy::from_env()?;
 
     let response = client.planets().list().send().await?;
 
@@ -44,8 +44,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 Every operation returns a request builder; set optional parameters fluently
 and finish with `.send().await`.
 
-The builder accepts every credential this API takes, and `from_env` reads
-them from the environment instead:
+`from_env` reads the environment variables listed under Authentication below. A
+variable that is not set is skipped rather than reported, so export them before
+running the example, or authenticated requests will be rejected. The builder
+takes every credential explicitly instead:
 
 ```rust,no_run
 use scalar_galaxy::Galaxy;
@@ -115,12 +117,17 @@ result of `send().await` to distinguish API errors (with status and decoded
 body) from transport and decoding failures:
 
 ```rust,no_run
-use scalar_galaxy::Error;
+use scalar_galaxy::{ApiErrorKind, Error};
 
 fn report<T>(result: Result<T, Error>) {
     match result {
         Ok(value) => { /* … */ }
-        Err(Error::Api(api)) => eprintln!("status {}: {:?}", api.status, api.body),
+        Err(Error::Api(api)) => match api.kind() {
+            ApiErrorKind::NotFound => eprintln!("not found"),
+            ApiErrorKind::RateLimit => eprintln!("rate limited; retry later"),
+            ApiErrorKind::InternalServer => eprintln!("server error {}", api.status),
+            _ => eprintln!("status {}: {:?}", api.status, api.body),
+        },
         Err(other) => eprintln!("request failed: {other}"),
     }
 }
@@ -130,25 +137,41 @@ fn report<T>(result: Result<T, Error>) {
 `request_id` when there was one, the decoded `body`, and the raw text of a
 body that was not JSON — nothing about a failed response is discarded.
 
+[`ApiErrorKind`] classifies the status: `BadRequest` (400), `Authentication`
+(401), `PermissionDenied` (403), `NotFound` (404), `Conflict` (409),
+`UnprocessableEntity` (422), `RateLimit` (429), `InternalServer` (500 and
+above), and `Other` for any other status. It is non-exhaustive, so a match
+on it needs a `_` arm. `Error::status()` returns the status of an API failure
+and `None` for every other kind of error.
+
 ## Bring your own HTTP client
 
 Every request flows through the `transport::Transport` trait — one
 `execute` method over `http::Request<SdkBody>`. The default backend is
 `reqwest`; to tune it (proxies, connection pools, TLS settings), pass a
-configured client:
+configured client builder:
 
 ```rust,no_run
 use scalar_galaxy::Galaxy;
 use scalar_galaxy::transport::ReqwestTransport;
 
 fn configure() -> Result<(), Box<dyn std::error::Error>> {
-    let http_client = reqwest::Client::builder().build()?;
+    let http_client = reqwest::Client::builder().pool_max_idle_per_host(8);
     let client = Galaxy::builder()
-        .transport(ReqwestTransport::from_client(http_client))
+        .transport(ReqwestTransport::from_builder(http_client)?)
         .build()?;
     Ok(())
 }
 ```
+
+`from_builder` turns reqwest's own redirect following off; the SDK client
+follows redirects itself (see [Untrusted input](#untrusted-input)).
+`ReqwestTransport::from_client` takes an already-built `reqwest::Client` and
+uses it as is, so build that client with
+`.redirect(reqwest::redirect::Policy::none())`. reqwest follows redirects by
+default, and on a hop to another host it drops `Authorization` and cookies
+but keeps other headers, so a header-placed API key goes wherever the
+redirect names.
 
 To replace reqwest entirely, implement `Transport` for your backend and
 drop the default features:
@@ -234,6 +257,7 @@ than API, and may change in any release.
 | `rustls` | yes | TLS for the bundled backend via `rustls`. |
 | `native-tls` | no | TLS for the bundled backend via the platform's own stack. |
 | `multipart` | yes | The vendored `multipart/form-data` encoder for file uploads. |
+| `websocket` | no | Nothing: this API has no WebSocket operations. |
 | `mock` | no | `MockTransport` and `InstantSleep` for network-free tests. |
 | `tracing` | no | `debug`-level request instrumentation via the `tracing` facade. |
 
@@ -280,9 +304,19 @@ Response bodies are untrusted, so the runtime bounds them by default:
   server that sends headers and then stalls cannot hang the call. The default
   skips streamed and multipart uploads and the body of a binary download, and
   streaming responses are always exempt.
-- The bundled backend follows **no** redirects: a followed redirect can
-  re-send credentials to a host the caller never chose. A next-page link that
-  points at another origin is refused for the same reason.
+- Redirects (301, 302, 303, 307, 308) are followed by the client, not the
+  HTTP backend, at most 20 per request. A redirect to another origin (scheme,
+  host, or port) drops `Authorization`, `Cookie`, `Proxy-Authorization`, and
+  every credential header for the rest of the chain, and the client adds no
+  query credential to it (a `Location` the server wrote is followed as given);
+  an https→http downgrade or a non-HTTP target is refused. A 303, or a 301/302
+  answering a POST, continues as a GET without the body; other redirects
+  resend the body and are refused when it was a one-shot stream. A next-page
+  link that points at another origin is refused outright.
+- A path parameter that is empty, or fills a whole segment and is `.` or
+  `..`, is refused with `Error::Config` before anything is sent, and so is a
+  `.` or `..` segment that parameters sharing it form: each would address a
+  different endpoint on the same host.
 - Header values are never logged, URLs are logged with their query string
   redacted, and request/response bodies are never logged.
 

@@ -43,7 +43,7 @@ It's easy to say you know them all, but do you really? Retrieve all the planets 
 
 | Direction | Type |
 | --- | --- |
-| Response | [`PaginatedResource`](./src/models/planets.rs) |
+| Response | [`PlanetsListResponse`](./src/models/planets.rs) |
 
 ```rust
 let response = client.planets().list().send().await?;

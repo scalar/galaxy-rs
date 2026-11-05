@@ -105,7 +105,7 @@ impl ListRequestBuilder {
     ///   be rendered into the request.
     /// - [`Error::Serde`](crate::error::Error::Serde) — the response body did not
     ///   match the generated model.
-    pub async fn send(self) -> Result<crate::models::PaginatedResource, crate::error::Error> {
+    pub async fn send(self) -> Result<crate::models::PlanetsListResponse, crate::error::Error> {
         let path = "/planets".to_string();
         let mut query: Vec<(String, String)> = Vec::new();
         if let Some(value) = &self.limit {
@@ -121,7 +121,7 @@ impl ListRequestBuilder {
             max_retries: self.max_retries,
         };
         self.client
-            .send::<crate::models::PaginatedResource, _>(
+            .send::<crate::models::PlanetsListResponse, _>(
                 http::Method::GET,
                 &path,
                 &query,
@@ -261,7 +261,7 @@ impl RetrieveRequestBuilder {
     pub async fn send(self) -> Result<crate::models::Planet, crate::error::Error> {
         let path = format!(
             "/planets/{}",
-            crate::http::encode_path_param(&crate::http::scalar_value(&self.planet_id))
+            crate::http::path_param(&crate::http::scalar_value(&self.planet_id))?
         );
         let query: Vec<(String, String)> = Vec::new();
         let headers: Vec<(String, String)> = Vec::new();
@@ -341,7 +341,7 @@ impl UpdateRequestBuilder {
     pub async fn send(self) -> Result<crate::models::Planet, crate::error::Error> {
         let path = format!(
             "/planets/{}",
-            crate::http::encode_path_param(&crate::http::scalar_value(&self.planet_id))
+            crate::http::path_param(&crate::http::scalar_value(&self.planet_id))?
         );
         let query: Vec<(String, String)> = Vec::new();
         let mut headers: Vec<(String, String)> = Vec::new();
@@ -414,7 +414,7 @@ impl DeleteRequestBuilder {
     pub async fn send(self) -> Result<(), crate::error::Error> {
         let path = format!(
             "/planets/{}",
-            crate::http::encode_path_param(&crate::http::scalar_value(&self.planet_id))
+            crate::http::path_param(&crate::http::scalar_value(&self.planet_id))?
         );
         let query: Vec<(String, String)> = Vec::new();
         let mut headers: Vec<(String, String)> = vec![("Accept".to_string(), "*/*".to_string())];
@@ -499,7 +499,7 @@ impl UploadImageRequestBuilder {
     pub async fn send(self) -> Result<crate::models::PlanetsUploadImageResponse, crate::error::Error> {
         let path = format!(
             "/planets/{}/image",
-            crate::http::encode_path_param(&crate::http::scalar_value(&self.planet_id))
+            crate::http::path_param(&crate::http::scalar_value(&self.planet_id))?
         );
         let query: Vec<(String, String)> = Vec::new();
         let mut headers: Vec<(String, String)> = Vec::new();

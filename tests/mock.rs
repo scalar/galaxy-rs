@@ -40,7 +40,7 @@ async fn authenticates_requests_with_configured_credentials() {
     let mock = MockTransport::new();
     mock.enqueue(200, RESPONSE_BODY);
     let client = Galaxy::builder()
-        .base_url("http://mock.invalid")
+        .base_url("https://mock.invalid")
         .transport(mock.clone())
         .sleeper(InstantSleep)
         .max_retries(0)
@@ -75,7 +75,7 @@ async fn oauth_fetches_one_token_and_reuses_it() {
     mock.enqueue(200, "{}");
     mock.enqueue(200, "{}");
     let client = Galaxy::builder()
-        .base_url("http://mock.invalid")
+        .base_url("https://mock.invalid")
         .transport(mock.clone())
         .sleeper(InstantSleep)
         .max_retries(0)
@@ -129,7 +129,7 @@ async fn oauth_requests_only_the_configured_scopes() {
     mock.enqueue(200, TOKEN_RESPONSE);
     mock.enqueue(200, "{}");
     let client = Galaxy::builder()
-        .base_url("http://mock.invalid")
+        .base_url("https://mock.invalid")
         .transport(mock.clone())
         .sleeper(InstantSleep)
         .max_retries(0)
@@ -165,7 +165,7 @@ async fn oauth_token_endpoint_is_untouched_when_another_credential_wins() {
     let mock = MockTransport::new();
     mock.enqueue(200, "{}");
     let client = Galaxy::builder()
-        .base_url("http://mock.invalid")
+        .base_url("https://mock.invalid")
         .transport(mock.clone())
         .sleeper(InstantSleep)
         .max_retries(0)
@@ -212,7 +212,7 @@ async fn retries_transient_429_and_succeeds() {
     mock.enqueue(429, "{}");
     mock.enqueue(200, RESPONSE_BODY);
     let client = Galaxy::builder()
-        .base_url("http://mock.invalid")
+        .base_url("https://mock.invalid")
         .transport(mock.clone())
         .sleeper(InstantSleep)
         .max_retries(1)
@@ -225,6 +225,36 @@ async fn retries_transient_429_and_succeeds() {
     .await;
     assert!(result.is_ok(), "retried call failed: {result:?}");
     assert_eq!(mock.requests().len(), 2, "expected the 429 to be retried exactly once");
+}
+
+/// The client is `Send + Sync + Clone + 'static` and a representative set of the
+/// futures it returns are `Send + 'static`, so callers can share it across tasks
+/// and `tokio::spawn` its calls. Checked at compile time: the futures are built,
+/// never polled.
+#[test]
+fn client_and_returned_futures_are_send() {
+    fn assert_client<T: Send + Sync + Clone + 'static>() {}
+    fn assert_send<T: Send + 'static>(_: &T) {}
+    assert_client::<Galaxy>();
+    let mock = MockTransport::new();
+    let client = Galaxy::builder()
+        .base_url("https://mock.invalid")
+        .transport(mock.clone())
+        .sleeper(InstantSleep)
+        .build()
+        .expect("client builds");
+    // An operation builder's `send()` future.
+    assert_send(&{
+        let client = client.clone();
+        async move {
+            let result: Result<(), Error> = async {
+                let _ = client.planets().list().send().await?;
+                Ok(())
+            }
+            .await;
+            result
+        }
+    });
 }
 
 /// A hanging transport trips the builder deadline: the runtime races the
@@ -257,7 +287,7 @@ async fn decodes_typed_response_from_queued_body() {
     let mock = MockTransport::new();
     mock.enqueue(200, RESPONSE_BODY);
     let client = Galaxy::builder()
-        .base_url("http://mock.invalid")
+        .base_url("https://mock.invalid")
         .transport(mock.clone())
         .sleeper(InstantSleep)
         .max_retries(0)
@@ -279,7 +309,7 @@ async fn oversized_response_is_rejected() {
     let mock = MockTransport::new();
     mock.enqueue(200, RESPONSE_BODY);
     let client = Galaxy::builder()
-        .base_url("http://mock.invalid")
+        .base_url("https://mock.invalid")
         .transport(mock.clone())
         .sleeper(InstantSleep)
         .max_retries(0)
@@ -292,7 +322,7 @@ async fn oversized_response_is_rejected() {
     }
     .await;
     match result {
-        Err(Error::ResponseTooLarge { limit }) => assert_eq!(limit, RESPONSE_BODY.len() - 1),
+        Err(Error::ResponseTooLarge { limit, .. }) => assert_eq!(limit, RESPONSE_BODY.len() - 1),
         other => panic!("expected Error::ResponseTooLarge, got {other:?}"),
     }
 }
