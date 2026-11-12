@@ -30,7 +30,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .sleeper(InstantSleep)
         .build()?;
 
-    let _ = client.planets().list_all_data().send().await?;
+    let _ = client.planets().list().send().await?;
 
     // Assert on what actually went over the wire.
     let requests = mock.requests();
