@@ -137,7 +137,7 @@ impl ListRequestBuilder {
 #[must_use = "a request builder does nothing until `.send().await` is called"]
 pub struct CreateRequestBuilder {
     client: crate::client::Galaxy,
-    body: Option<crate::models::Planet>,
+    body: Option<crate::models::PlanetsCreateBody>,
     idempotency_key: Option<String>,
     timeout: Option<std::time::Duration>,
     max_retries: Option<u32>,
@@ -155,7 +155,7 @@ impl CreateRequestBuilder {
     }
 
     /// Planet
-    pub fn body(mut self, value: crate::models::Planet) -> Self {
+    pub fn body(mut self, value: crate::models::PlanetsCreateBody) -> Self {
         self.body = Some(value);
         self
     }
@@ -280,7 +280,7 @@ impl RetrieveRequestBuilder {
 pub struct UpdateRequestBuilder {
     client: crate::client::Galaxy,
     planet_id: i64,
-    body: Option<crate::models::Planet>,
+    body: Option<crate::models::PlanetsUpdateBody>,
     idempotency_key: Option<String>,
     timeout: Option<std::time::Duration>,
     max_retries: Option<u32>,
@@ -299,7 +299,7 @@ impl UpdateRequestBuilder {
     }
 
     /// New information about the planet
-    pub fn body(mut self, value: crate::models::Planet) -> Self {
+    pub fn body(mut self, value: crate::models::PlanetsUpdateBody) -> Self {
         self.body = Some(value);
         self
     }

@@ -30,9 +30,11 @@ pub use client::Galaxy;
 pub use client::GalaxyBuilder;
 pub use error::{ApiError, ApiErrorKind, Error};
 pub use models::{
-    AuthenticationCreateUserBody, CelestialBody, Credentials, Planet, PlanetAtmosphere, PlanetPhysicalProperties,
-    PlanetPhysicalPropertiesTemperature, PlanetsListResponse, PlanetsListResponseMeta, PlanetsUploadImageBody,
-    PlanetsUploadImageResponse, Satellite, SatelliteOrbit, Token, User,
+    AuthenticationCreateTokenBody, AuthenticationCreateUserBody, CelestialBody, CelestialBodyParam, Credentials,
+    CredentialsParam, Planet, PlanetAtmosphere, PlanetParam, PlanetPhysicalProperties,
+    PlanetPhysicalPropertiesTemperature, PlanetsCreateBody, PlanetsListResponse, PlanetsListResponseMeta,
+    PlanetsUpdateBody, PlanetsUploadImageBody, PlanetsUploadImageResponse, Satellite, SatelliteOrbit, SatelliteParam,
+    SatelliteParamOrbit, Token, User, UserParam,
 };
 pub use webhooks::WebhookEvent;
 
