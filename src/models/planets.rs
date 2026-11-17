@@ -175,6 +175,468 @@ impl Planet {
     }
 }
 
+/// A planet in the Scalar Galaxy
+///
+/// The request shape of [`Planet`]: the fields a request carries, without the server-owned (`readOnly`) ones and with
+/// the request-only (`writeOnly`) ones.
+///
+/// Marked `#[non_exhaustive]` so the API can add fields without a breaking release: build it with `PlanetParam::new`
+/// and the `with_*` setters rather than a struct literal. Fields stay public for reading.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct PlanetParam {
+    pub name: String,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "crate::explicit_null::double_option"
+    )]
+    pub description: Option<Option<String>>,
+    #[serde(default, skip_serializing)]
+    pub r#type: String,
+    /// A score from 0 to 1 indicating potential habitability
+    #[serde(
+        rename = "habitabilityIndex",
+        default,
+        skip_serializing_if = "Option::is_none",
+        serialize_with = "crate::number::option::serialize"
+    )]
+    pub habitability_index: Option<f64>,
+    #[serde(rename = "physicalProperties", default, skip_serializing_if = "Option::is_none")]
+    pub physical_properties: Option<PlanetPhysicalProperties>,
+    /// Atmospheric composition
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub atmosphere: Option<Vec<PlanetAtmosphere>>,
+    #[serde(
+        rename = "discoveredAt",
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "crate::datetime::option::deserialize"
+    )]
+    pub discovered_at: Option<chrono::DateTime<chrono::FixedOffset>>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "crate::explicit_null::double_option"
+    )]
+    pub image: Option<Option<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub satellites: Option<Vec<SatelliteParam>>,
+    /// A user
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub creator: Option<UserParam>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tags: Option<Vec<String>>,
+    /// URL which gets invoked upon a successful operation
+    #[serde(rename = "successCallbackUrl", default, skip_serializing_if = "Option::is_none")]
+    pub success_callback_url: Option<String>,
+    /// URL which gets invoked upon a failed operation
+    #[serde(rename = "failureCallbackUrl", default, skip_serializing_if = "Option::is_none")]
+    pub failure_callback_url: Option<String>,
+}
+
+impl PlanetParam {
+    /// Creates a new `PlanetParam` from its required fields, leaving every optional one unset.
+    ///
+    /// Set an optional field with its `with_*` setter:
+    /// `PlanetParam::new(name).with_description(…)`.
+    pub fn new(name: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            description: None,
+            r#type: String::new(),
+            habitability_index: None,
+            physical_properties: None,
+            atmosphere: None,
+            discovered_at: None,
+            image: None,
+            satellites: None,
+            creator: None,
+            tags: None,
+            success_callback_url: None,
+            failure_callback_url: None,
+        }
+    }
+
+    /// Sets `description`, which `new` leaves unset.
+    ///
+    /// To send an explicit `null` instead, assign `description = Some(None)` on the built value.
+    pub fn with_description(mut self, value: impl Into<String>) -> Self {
+        self.description = Some(Some(value.into()));
+        self
+    }
+
+    /// Sets `habitability_index`, which `new` leaves unset.
+    pub fn with_habitability_index(mut self, value: f64) -> Self {
+        self.habitability_index = Some(value);
+        self
+    }
+
+    /// Sets `physical_properties`, which `new` leaves unset.
+    pub fn with_physical_properties(mut self, value: PlanetPhysicalProperties) -> Self {
+        self.physical_properties = Some(value);
+        self
+    }
+
+    /// Sets `atmosphere`, which `new` leaves unset.
+    pub fn with_atmosphere(mut self, value: Vec<PlanetAtmosphere>) -> Self {
+        self.atmosphere = Some(value);
+        self
+    }
+
+    /// Sets `discovered_at`, which `new` leaves unset.
+    pub fn with_discovered_at(mut self, value: chrono::DateTime<chrono::FixedOffset>) -> Self {
+        self.discovered_at = Some(value);
+        self
+    }
+
+    /// Sets `image`, which `new` leaves unset.
+    ///
+    /// To send an explicit `null` instead, assign `image = Some(None)` on the built value.
+    pub fn with_image(mut self, value: impl Into<String>) -> Self {
+        self.image = Some(Some(value.into()));
+        self
+    }
+
+    /// Sets `satellites`, which `new` leaves unset.
+    pub fn with_satellites(mut self, value: Vec<SatelliteParam>) -> Self {
+        self.satellites = Some(value);
+        self
+    }
+
+    /// Sets `creator`, which `new` leaves unset.
+    pub fn with_creator(mut self, value: UserParam) -> Self {
+        self.creator = Some(value);
+        self
+    }
+
+    /// Sets `tags`, which `new` leaves unset.
+    pub fn with_tags(mut self, value: Vec<String>) -> Self {
+        self.tags = Some(value);
+        self
+    }
+
+    /// Sets `success_callback_url`, which `new` leaves unset.
+    pub fn with_success_callback_url(mut self, value: impl Into<String>) -> Self {
+        self.success_callback_url = Some(value.into());
+        self
+    }
+
+    /// Sets `failure_callback_url`, which `new` leaves unset.
+    pub fn with_failure_callback_url(mut self, value: impl Into<String>) -> Self {
+        self.failure_callback_url = Some(value.into());
+        self
+    }
+}
+
+/// A planet in the Scalar Galaxy
+///
+/// The request body sent in place of [`Planet`]: the fields a request carries, without the server-owned (`readOnly`)
+/// ones and with the request-only (`writeOnly`) ones.
+///
+/// Marked `#[non_exhaustive]` so the API can add fields without a breaking release: build it with
+/// `PlanetsCreateBody::new` and the `with_*` setters rather than a struct literal. Fields stay public for reading.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct PlanetsCreateBody {
+    pub name: String,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "crate::explicit_null::double_option"
+    )]
+    pub description: Option<Option<String>>,
+    #[serde(default, skip_serializing)]
+    pub r#type: String,
+    /// A score from 0 to 1 indicating potential habitability
+    #[serde(
+        rename = "habitabilityIndex",
+        default,
+        skip_serializing_if = "Option::is_none",
+        serialize_with = "crate::number::option::serialize"
+    )]
+    pub habitability_index: Option<f64>,
+    #[serde(rename = "physicalProperties", default, skip_serializing_if = "Option::is_none")]
+    pub physical_properties: Option<PlanetPhysicalProperties>,
+    /// Atmospheric composition
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub atmosphere: Option<Vec<PlanetAtmosphere>>,
+    #[serde(
+        rename = "discoveredAt",
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "crate::datetime::option::deserialize"
+    )]
+    pub discovered_at: Option<chrono::DateTime<chrono::FixedOffset>>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "crate::explicit_null::double_option"
+    )]
+    pub image: Option<Option<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub satellites: Option<Vec<SatelliteParam>>,
+    /// A user
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub creator: Option<UserParam>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tags: Option<Vec<String>>,
+    /// URL which gets invoked upon a successful operation
+    #[serde(rename = "successCallbackUrl", default, skip_serializing_if = "Option::is_none")]
+    pub success_callback_url: Option<String>,
+    /// URL which gets invoked upon a failed operation
+    #[serde(rename = "failureCallbackUrl", default, skip_serializing_if = "Option::is_none")]
+    pub failure_callback_url: Option<String>,
+}
+
+impl PlanetsCreateBody {
+    /// Creates a new `PlanetsCreateBody` from its required fields, leaving every optional one unset.
+    ///
+    /// Set an optional field with its `with_*` setter:
+    /// `PlanetsCreateBody::new(name).with_description(…)`.
+    pub fn new(name: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            description: None,
+            r#type: String::new(),
+            habitability_index: None,
+            physical_properties: None,
+            atmosphere: None,
+            discovered_at: None,
+            image: None,
+            satellites: None,
+            creator: None,
+            tags: None,
+            success_callback_url: None,
+            failure_callback_url: None,
+        }
+    }
+
+    /// Sets `description`, which `new` leaves unset.
+    ///
+    /// To send an explicit `null` instead, assign `description = Some(None)` on the built value.
+    pub fn with_description(mut self, value: impl Into<String>) -> Self {
+        self.description = Some(Some(value.into()));
+        self
+    }
+
+    /// Sets `habitability_index`, which `new` leaves unset.
+    pub fn with_habitability_index(mut self, value: f64) -> Self {
+        self.habitability_index = Some(value);
+        self
+    }
+
+    /// Sets `physical_properties`, which `new` leaves unset.
+    pub fn with_physical_properties(mut self, value: PlanetPhysicalProperties) -> Self {
+        self.physical_properties = Some(value);
+        self
+    }
+
+    /// Sets `atmosphere`, which `new` leaves unset.
+    pub fn with_atmosphere(mut self, value: Vec<PlanetAtmosphere>) -> Self {
+        self.atmosphere = Some(value);
+        self
+    }
+
+    /// Sets `discovered_at`, which `new` leaves unset.
+    pub fn with_discovered_at(mut self, value: chrono::DateTime<chrono::FixedOffset>) -> Self {
+        self.discovered_at = Some(value);
+        self
+    }
+
+    /// Sets `image`, which `new` leaves unset.
+    ///
+    /// To send an explicit `null` instead, assign `image = Some(None)` on the built value.
+    pub fn with_image(mut self, value: impl Into<String>) -> Self {
+        self.image = Some(Some(value.into()));
+        self
+    }
+
+    /// Sets `satellites`, which `new` leaves unset.
+    pub fn with_satellites(mut self, value: Vec<SatelliteParam>) -> Self {
+        self.satellites = Some(value);
+        self
+    }
+
+    /// Sets `creator`, which `new` leaves unset.
+    pub fn with_creator(mut self, value: UserParam) -> Self {
+        self.creator = Some(value);
+        self
+    }
+
+    /// Sets `tags`, which `new` leaves unset.
+    pub fn with_tags(mut self, value: Vec<String>) -> Self {
+        self.tags = Some(value);
+        self
+    }
+
+    /// Sets `success_callback_url`, which `new` leaves unset.
+    pub fn with_success_callback_url(mut self, value: impl Into<String>) -> Self {
+        self.success_callback_url = Some(value.into());
+        self
+    }
+
+    /// Sets `failure_callback_url`, which `new` leaves unset.
+    pub fn with_failure_callback_url(mut self, value: impl Into<String>) -> Self {
+        self.failure_callback_url = Some(value.into());
+        self
+    }
+}
+
+/// A planet in the Scalar Galaxy
+///
+/// The request body sent in place of [`Planet`]: the fields a request carries, without the server-owned (`readOnly`)
+/// ones and with the request-only (`writeOnly`) ones.
+///
+/// Marked `#[non_exhaustive]` so the API can add fields without a breaking release: build it with
+/// `PlanetsUpdateBody::new` and the `with_*` setters rather than a struct literal. Fields stay public for reading.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct PlanetsUpdateBody {
+    pub name: String,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "crate::explicit_null::double_option"
+    )]
+    pub description: Option<Option<String>>,
+    #[serde(default, skip_serializing)]
+    pub r#type: String,
+    /// A score from 0 to 1 indicating potential habitability
+    #[serde(
+        rename = "habitabilityIndex",
+        default,
+        skip_serializing_if = "Option::is_none",
+        serialize_with = "crate::number::option::serialize"
+    )]
+    pub habitability_index: Option<f64>,
+    #[serde(rename = "physicalProperties", default, skip_serializing_if = "Option::is_none")]
+    pub physical_properties: Option<PlanetPhysicalProperties>,
+    /// Atmospheric composition
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub atmosphere: Option<Vec<PlanetAtmosphere>>,
+    #[serde(
+        rename = "discoveredAt",
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "crate::datetime::option::deserialize"
+    )]
+    pub discovered_at: Option<chrono::DateTime<chrono::FixedOffset>>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "crate::explicit_null::double_option"
+    )]
+    pub image: Option<Option<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub satellites: Option<Vec<SatelliteParam>>,
+    /// A user
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub creator: Option<UserParam>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tags: Option<Vec<String>>,
+    /// URL which gets invoked upon a successful operation
+    #[serde(rename = "successCallbackUrl", default, skip_serializing_if = "Option::is_none")]
+    pub success_callback_url: Option<String>,
+    /// URL which gets invoked upon a failed operation
+    #[serde(rename = "failureCallbackUrl", default, skip_serializing_if = "Option::is_none")]
+    pub failure_callback_url: Option<String>,
+}
+
+impl PlanetsUpdateBody {
+    /// Creates a new `PlanetsUpdateBody` from its required fields, leaving every optional one unset.
+    ///
+    /// Set an optional field with its `with_*` setter:
+    /// `PlanetsUpdateBody::new(name).with_description(…)`.
+    pub fn new(name: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            description: None,
+            r#type: String::new(),
+            habitability_index: None,
+            physical_properties: None,
+            atmosphere: None,
+            discovered_at: None,
+            image: None,
+            satellites: None,
+            creator: None,
+            tags: None,
+            success_callback_url: None,
+            failure_callback_url: None,
+        }
+    }
+
+    /// Sets `description`, which `new` leaves unset.
+    ///
+    /// To send an explicit `null` instead, assign `description = Some(None)` on the built value.
+    pub fn with_description(mut self, value: impl Into<String>) -> Self {
+        self.description = Some(Some(value.into()));
+        self
+    }
+
+    /// Sets `habitability_index`, which `new` leaves unset.
+    pub fn with_habitability_index(mut self, value: f64) -> Self {
+        self.habitability_index = Some(value);
+        self
+    }
+
+    /// Sets `physical_properties`, which `new` leaves unset.
+    pub fn with_physical_properties(mut self, value: PlanetPhysicalProperties) -> Self {
+        self.physical_properties = Some(value);
+        self
+    }
+
+    /// Sets `atmosphere`, which `new` leaves unset.
+    pub fn with_atmosphere(mut self, value: Vec<PlanetAtmosphere>) -> Self {
+        self.atmosphere = Some(value);
+        self
+    }
+
+    /// Sets `discovered_at`, which `new` leaves unset.
+    pub fn with_discovered_at(mut self, value: chrono::DateTime<chrono::FixedOffset>) -> Self {
+        self.discovered_at = Some(value);
+        self
+    }
+
+    /// Sets `image`, which `new` leaves unset.
+    ///
+    /// To send an explicit `null` instead, assign `image = Some(None)` on the built value.
+    pub fn with_image(mut self, value: impl Into<String>) -> Self {
+        self.image = Some(Some(value.into()));
+        self
+    }
+
+    /// Sets `satellites`, which `new` leaves unset.
+    pub fn with_satellites(mut self, value: Vec<SatelliteParam>) -> Self {
+        self.satellites = Some(value);
+        self
+    }
+
+    /// Sets `creator`, which `new` leaves unset.
+    pub fn with_creator(mut self, value: UserParam) -> Self {
+        self.creator = Some(value);
+        self
+    }
+
+    /// Sets `tags`, which `new` leaves unset.
+    pub fn with_tags(mut self, value: Vec<String>) -> Self {
+        self.tags = Some(value);
+        self
+    }
+
+    /// Sets `success_callback_url`, which `new` leaves unset.
+    pub fn with_success_callback_url(mut self, value: impl Into<String>) -> Self {
+        self.success_callback_url = Some(value.into());
+        self
+    }
+
+    /// Sets `failure_callback_url`, which `new` leaves unset.
+    pub fn with_failure_callback_url(mut self, value: impl Into<String>) -> Self {
+        self.failure_callback_url = Some(value.into());
+        self
+    }
+}
+
 /// Marked `#[non_exhaustive]` so the API can add fields without a breaking release: build it with
 /// `PlanetsListResponse::new` and the `with_*` setters rather than a struct literal. Fields stay public for reading.
 ///

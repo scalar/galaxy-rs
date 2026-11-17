@@ -13,7 +13,7 @@ impl CelestialBodiesResource {
     }
 
     /// Create a celestial body
-    pub fn create(&self, body: crate::models::CelestialBody) -> CreateRequestBuilder {
+    pub fn create(&self, body: crate::models::CelestialBodyParam) -> CreateRequestBuilder {
         CreateRequestBuilder::new(self.client.clone(), body)
     }
 }
@@ -22,14 +22,14 @@ impl CelestialBodiesResource {
 #[must_use = "a request builder does nothing until `.send().await` is called"]
 pub struct CreateRequestBuilder {
     client: crate::client::Galaxy,
-    body: crate::models::CelestialBody,
+    body: crate::models::CelestialBodyParam,
     idempotency_key: Option<String>,
     timeout: Option<std::time::Duration>,
     max_retries: Option<u32>,
 }
 
 impl CreateRequestBuilder {
-    fn new(client: crate::client::Galaxy, body: crate::models::CelestialBody) -> Self {
+    fn new(client: crate::client::Galaxy, body: crate::models::CelestialBodyParam) -> Self {
         Self {
             client,
             body,

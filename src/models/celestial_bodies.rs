@@ -35,6 +35,39 @@ pub enum CelestialBody {
     Unknown(serde_json::Value),
 }
 
+/// A celestial body which can be either a planet or a satellite
+///
+/// The request shape of [`CelestialBody`]: the fields a request carries, without the server-owned (`readOnly`) ones and
+/// with the request-only (`writeOnly`) ones.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "type")]
+#[non_exhaustive]
+pub enum CelestialBodyParam {
+    #[serde(rename = "terrestrial")]
+    Planet(PlanetParam),
+    #[serde(rename = "gas_giant")]
+    Planet_(PlanetParam),
+    #[serde(rename = "ice_giant")]
+    Planet__(PlanetParam),
+    #[serde(rename = "dwarf")]
+    Planet___(PlanetParam),
+    #[serde(rename = "super_earth")]
+    Planet____(PlanetParam),
+    #[serde(rename = "moon")]
+    Satellite(SatelliteParam),
+    #[serde(rename = "asteroid")]
+    Satellite_(SatelliteParam),
+    #[serde(rename = "comet")]
+    Satellite__(SatelliteParam),
+    /// A variant not recognized by this version of the SDK, preserved verbatim.
+    ///
+    /// Match the specific variants first. Matching this one directly is an
+    /// anti-pattern: that arm silently stops matching once a future SDK
+    /// release adds the real variant.
+    #[serde(untagged)]
+    Unknown(serde_json::Value),
+}
+
 /// Every satellite in the Scalar Galaxy
 ///
 /// Marked `#[non_exhaustive]` so the API can add fields without a breaking release: build it with `Satellite::new` and
@@ -107,6 +140,72 @@ impl Satellite {
     }
 }
 
+/// Every satellite in the Scalar Galaxy
+///
+/// The request shape of [`Satellite`]: the fields a request carries, without the server-owned (`readOnly`) ones and
+/// with the request-only (`writeOnly`) ones.
+///
+/// Marked `#[non_exhaustive]` so the API can add fields without a breaking release: build it with `SatelliteParam::new`
+/// and the `with_*` setters rather than a struct literal. Fields stay public for reading.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct SatelliteParam {
+    pub name: String,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "crate::explicit_null::double_option"
+    )]
+    pub description: Option<Option<String>>,
+    /// Diameter in kilometers
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        serialize_with = "crate::number::option::serialize"
+    )]
+    pub diameter: Option<f64>,
+    #[serde(default, skip_serializing)]
+    pub r#type: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub orbit: Option<SatelliteParamOrbit>,
+}
+
+impl SatelliteParam {
+    /// Creates a new `SatelliteParam` from its required fields, leaving every optional one unset.
+    ///
+    /// Set an optional field with its `with_*` setter:
+    /// `SatelliteParam::new(name).with_description(…)`.
+    pub fn new(name: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            description: None,
+            diameter: None,
+            r#type: String::new(),
+            orbit: None,
+        }
+    }
+
+    /// Sets `description`, which `new` leaves unset.
+    ///
+    /// To send an explicit `null` instead, assign `description = Some(None)` on the built value.
+    pub fn with_description(mut self, value: impl Into<String>) -> Self {
+        self.description = Some(Some(value.into()));
+        self
+    }
+
+    /// Sets `diameter`, which `new` leaves unset.
+    pub fn with_diameter(mut self, value: f64) -> Self {
+        self.diameter = Some(value);
+        self
+    }
+
+    /// Sets `orbit`, which `new` leaves unset.
+    pub fn with_orbit(mut self, value: SatelliteParamOrbit) -> Self {
+        self.orbit = Some(value);
+        self
+    }
+}
+
 /// Marked `#[non_exhaustive]` so the API can add fields without a breaking release: build it with `SatelliteOrbit::new`
 /// and the `with_*` setters rather than a struct literal. Fields stay public for reading.
 ///
@@ -150,6 +249,69 @@ impl SatelliteOrbit {
 
     /// Sets `planet`, which `new` leaves unset.
     pub fn with_planet(mut self, value: Planet) -> Self {
+        self.planet = Some(value);
+        self
+    }
+
+    /// Sets `orbital_period`, which `new` leaves unset.
+    pub fn with_orbital_period(mut self, value: f64) -> Self {
+        self.orbital_period = Some(value);
+        self
+    }
+
+    /// Sets `distance`, which `new` leaves unset.
+    pub fn with_distance(mut self, value: f64) -> Self {
+        self.distance = Some(value);
+        self
+    }
+}
+
+/// The request shape of [`SatelliteOrbit`]: the fields a request carries, without the server-owned (`readOnly`) ones
+/// and with the request-only (`writeOnly`) ones.
+///
+/// Marked `#[non_exhaustive]` so the API can add fields without a breaking release: build it with
+/// `SatelliteParamOrbit::new` and the `with_*` setters rather than a struct literal. Fields stay public for reading.
+///
+/// `Default` is the empty value, every field unset. It is withdrawn if the API ever makes a field required, which
+/// breaks callers through `new` as well.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct SatelliteParamOrbit {
+    /// A planet in the Scalar Galaxy
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub planet: Option<PlanetParam>,
+    /// Orbital period in Earth days
+    #[serde(
+        rename = "orbitalPeriod",
+        default,
+        skip_serializing_if = "Option::is_none",
+        serialize_with = "crate::number::option::serialize"
+    )]
+    pub orbital_period: Option<f64>,
+    /// Average distance from the planet in kilometers
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        serialize_with = "crate::number::option::serialize"
+    )]
+    pub distance: Option<f64>,
+}
+
+impl SatelliteParamOrbit {
+    /// Creates a new `SatelliteParamOrbit` from its required fields, leaving every optional one unset.
+    ///
+    /// Set an optional field with its `with_*` setter:
+    /// `SatelliteParamOrbit::new().with_planet(…)`.
+    pub fn new() -> Self {
+        Self {
+            planet: None,
+            orbital_period: None,
+            distance: None,
+        }
+    }
+
+    /// Sets `planet`, which `new` leaves unset.
+    pub fn with_planet(mut self, value: PlanetParam) -> Self {
         self.planet = Some(value);
         self
     }

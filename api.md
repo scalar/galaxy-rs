@@ -55,7 +55,7 @@ Time to play god and create a new planet. What do you think? Ah, don't think too
 
 | Direction | Type |
 | --- | --- |
-| Request | [`Planet`](./src/models/planets.rs) |
+| Request | [`PlanetsCreateBody`](./src/models/planets.rs) |
 | Response | [`Planet`](./src/models/planets.rs) |
 
 ```rust
@@ -80,7 +80,7 @@ Sometimes you make mistakes, that's fine. No worries, you can update all planets
 
 | Direction | Type |
 | --- | --- |
-| Request | [`Planet`](./src/models/planets.rs) |
+| Request | [`PlanetsUpdateBody`](./src/models/planets.rs) |
 | Response | [`Planet`](./src/models/planets.rs) |
 
 ```rust
@@ -121,7 +121,7 @@ Stars, moons, comets, the occasional rogue asteroid — if it glows or drifts th
 
 | Direction | Type |
 | --- | --- |
-| Request | [`CelestialBody`](./src/models/celestial_bodies.rs) |
+| Request | [`CelestialBodyParam`](./src/models/celestial_bodies.rs) |
 | Response | [`CelestialBody`](./src/models/celestial_bodies.rs) |
 
 ## `Authentication`
@@ -147,7 +147,7 @@ Yeah, this is the boring security stuff. Just get your super secret token and mo
 
 | Direction | Type |
 | --- | --- |
-| Request | [`Credentials`](./src/models/authentication.rs) |
+| Request | [`AuthenticationCreateTokenBody`](./src/models/authentication.rs) |
 | Response | [`Token`](./src/models/authentication.rs) |
 
 ```rust
