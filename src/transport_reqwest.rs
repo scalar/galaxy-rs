@@ -45,14 +45,16 @@ pub struct ReqwestTransport {
 impl ReqwestTransport {
     /// Creates a transport with the SDK's opinionated defaults.
     ///
-    /// Redirects are **disabled** ([`reqwest::redirect::Policy::none`]): a
-    /// followed redirect can silently re-send credentials to an unexpected
-    /// host, so the SDK surfaces 3xx responses as data and leaves following
-    /// them to the caller. The user agent is deliberately not set here — the
-    /// generated client sends its SDK user agent as a regular request header,
-    /// so it applies identically to every transport, including BYO ones.
+    /// Redirects are **disabled** in reqwest
+    /// ([`reqwest::redirect::Policy::none`]): on a hop to another host reqwest
+    /// drops only `Authorization`, `Cookie`, and `Proxy-Authorization`, so an
+    /// API key in its own header would reach a foreign host. The SDK client follows redirects
+    /// itself instead, dropping credentials when a hop leaves the API's origin.
+    /// The user agent is deliberately not set here — the generated client
+    /// sends its SDK user agent as a regular request header, so it applies
+    /// identically to every transport, including BYO ones.
     ///
-    /// Use [`ReqwestTransport::from_client`] to supply a customized client
+    /// Use [`ReqwestTransport::from_builder`] to customize the client
     /// (proxies, TLS options, pool tuning).
     ///
     /// # Errors
@@ -68,13 +70,39 @@ impl ReqwestTransport {
         Ok(Self { client })
     }
 
+    /// Builds a transport from a customized [`reqwest::ClientBuilder`], with
+    /// redirects turned off.
+    ///
+    /// Everything the builder configures (proxies, connection pool, TLS
+    /// settings) is kept except the redirect policy, which is replaced with
+    /// [`reqwest::redirect::Policy::none`] for the reason
+    /// [`ReqwestTransport::new`] gives. Prefer this over
+    /// [`ReqwestTransport::from_client`].
+    ///
+    /// # Errors
+    ///
+    /// Returns a [`TransportError`] of kind [`TransportErrorKind::Other`] when
+    /// reqwest cannot build the client.
+    pub fn from_builder(builder: reqwest::ClientBuilder) -> Result<Self, TransportError> {
+        let client = builder
+            .redirect(reqwest::redirect::Policy::none())
+            .build()
+            .map_err(|error| TransportError::new(TransportErrorKind::Other, redact_url(error)))?;
+        Ok(Self { client })
+    }
+
     /// Wraps an existing [`reqwest::Client`].
     ///
-    /// The client is used exactly as configured: **its own redirect policy
-    /// applies** (reqwest follows up to 10 redirects by default, unlike
-    /// [`ReqwestTransport::new`], which disables them), along with its
-    /// proxies, connection pool, and TLS settings. Use this when you need
-    /// backend detail the SDK defaults do not expose.
+    /// The client is used exactly as configured, **redirect policy
+    /// included**, and a [`reqwest::Client`] cannot be inspected or changed
+    /// after it is built. **The client must not follow redirects**: build it
+    /// with `.redirect(reqwest::redirect::Policy::none())`, or use
+    /// [`ReqwestTransport::from_builder`], which does that for you. reqwest
+    /// follows up to 10 redirects by default and, on a hop to another host,
+    /// drops only `Authorization`, `Cookie`, and `Proxy-Authorization`, so a
+    /// header-placed API key would reach whatever host the API redirects to. With redirects off in reqwest, the
+    /// SDK client follows them itself and drops credentials when a hop leaves
+    /// the API's origin.
     pub fn from_client(client: reqwest::Client) -> Self {
         Self { client }
     }
@@ -180,16 +208,21 @@ fn classify(error: reqwest::Error) -> TransportError {
     TransportError::new(kind, redact_url(error))
 }
 
-/// Strips the query string from the URL a [`reqwest::Error`] carries.
+/// Strips the query string and any userinfo from the URL a [`reqwest::Error`]
+/// carries.
 ///
-/// API keys commonly ride query parameters, and `reqwest::Error` includes its
-/// URL in `Display`; redacting the query before the error is wrapped means no
-/// `Display`/`Debug` of the source can leak credentials, while the host and
-/// path survive for debuggability.
+/// API keys commonly ride query parameters, a base URL can carry
+/// `user:password@`, and `reqwest::Error` includes its URL in `Display`;
+/// redacting both before the error is wrapped means no `Display`/`Debug` of
+/// the source can leak credentials, while the host and path survive for
+/// debuggability.
 #[cfg(feature = "reqwest")]
 fn redact_url(mut error: reqwest::Error) -> reqwest::Error {
     if let Some(url) = error.url_mut() {
         url.set_query(None);
+        // Both fail only for a URL that cannot have userinfo, which then has none to strip.
+        let _ = url.set_username("");
+        let _ = url.set_password(None);
     }
     error
 }

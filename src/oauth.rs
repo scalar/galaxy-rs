@@ -33,9 +33,10 @@ const EXPIRY_BUFFER: Duration = Duration::from_secs(120);
 
 /// Deadline applied to a token request when the client sets none.
 ///
-/// Mirrors the client's own default for buffered bodies: the form body is fully
-/// buffered, so bounding the exchange cannot kill a streaming upload. Without
-/// it a hung token endpoint would stall every request in the process.
+/// Mirrors the client's own default for buffered bodies (`DEFAULT_TIMEOUT`,
+/// rendered from the same configured value): the form body is fully buffered,
+/// so bounding the exchange cannot kill a streaming upload. Without it a hung
+/// token endpoint would stall every request in the process.
 const DEFAULT_TOKEN_TIMEOUT: Duration = Duration::from_secs(60);
 
 /// A cached access token and the instant it stops being usable.
@@ -76,6 +77,11 @@ pub(crate) struct TokenProvider {
     client_secret: String,
     /// Space-joined `scope` parameter; empty when the flow declares no scopes.
     scope: String,
+    /// Extra form fields naming the API the token is for, sent in order after
+    /// `scope`: one `resource` pair per RFC 8707 indicator (the key repeats
+    /// rather than the values being joined), then `audience`. Empty unless the
+    /// security scheme's settings name an API.
+    target_params: &'static [(&'static str, &'static str)],
     /// The cached token. A plain `std::sync::Mutex` because every critical
     /// section is a field read/write with no await inside it.
     cache: Mutex<Option<CachedToken>>,
@@ -108,6 +114,7 @@ impl TokenProvider {
         client_id: String,
         client_secret: String,
         scope: &str,
+        target_params: &'static [(&'static str, &'static str)],
     ) -> Self {
         Self {
             token_url: base_url
@@ -116,6 +123,7 @@ impl TokenProvider {
             client_id,
             client_secret,
             scope: scope.to_string(),
+            target_params,
             cache: Mutex::new(None),
             fetch_lock: futures_util::lock::Mutex::new(()),
         }
@@ -131,10 +139,12 @@ impl TokenProvider {
     ///
     /// # Errors
     ///
-    /// Returns whatever the token exchange failed with — [`Error::Transport`]
-    /// for a network failure, [`Error::Api`] for a rejected exchange (bad
-    /// credentials surface as the endpoint's own 400/401). Failures are never
-    /// cached, so the next call retries.
+    /// Returns whatever the token exchange failed with — [`Error::Config`] for
+    /// a token URL that is not https (plain http is allowed only to localhost
+    /// or a loopback address), [`Error::Transport`] for a network failure,
+    /// [`Error::Api`] for a rejected exchange (bad credentials surface as the
+    /// endpoint's own 400/401). Failures are never cached, so the next call
+    /// retries.
     pub(crate) async fn access_token(
         &self,
         transport: &dyn Transport,
@@ -201,9 +211,13 @@ impl TokenProvider {
             if !self.scope.is_empty() {
                 form.append_pair("scope", &self.scope);
             }
+            for (name, value) in self.target_params {
+                form.append_pair(name, value);
+            }
             form.finish()
         };
 
+        ensure_secure_token_url(&self.token_url)?;
         let mut request = http::Request::new(SdkBody::from_bytes(body.into_bytes()));
         *request.method_mut() = http::Method::POST;
         *request.uri_mut() = self
@@ -224,10 +238,22 @@ impl TokenProvider {
         // A token response is small by construction, so it always gets a
         // deadline — the caller's if they set one, otherwise the token default.
         let deadline = deadline.or(Some(DEFAULT_TOKEN_TIMEOUT));
-        // A token request is a POST, so `send_with_retries` will only replay it
-        // for statuses the server could not have processed (408/429/503) and
-        // for failed connections — exactly the right taxonomy here.
-        let response = crate::http::send_with_retries(transport, sleep, request, max_retries, deadline, false).await?;
+        // A token request is a POST, so the retry loop will only replay it
+        // for statuses the server could not have processed (408/429/503), for
+        // failed connections, and for an error the server marks
+        // `x-should-retry: true` — the server vouching for the replay. The
+        // token endpoint may belong to a separate identity provider, so the
+        // exchange carries none of the SDK's `X-Scalar-*` headers.
+        let response = crate::http::send_attempts(
+            transport,
+            sleep,
+            request,
+            max_retries,
+            deadline,
+            false,
+            crate::platform::AttemptHeaders::default(),
+        )
+        .await?;
         // Reuses the shared decode path, so a non-success token response
         // surfaces as the same `Error::Api` (status, request id, summarized
         // body) callers already handle, under the configured size cap. The read
@@ -269,6 +295,33 @@ impl TokenProvider {
         })?;
         header.set_sensitive(true);
         Ok(header)
+    }
+}
+
+/// Refuses a token endpoint the client secret must not be posted to.
+///
+/// The token URL comes from the API description (or resolves against the base
+/// URL when it is relative), and the exchange sends the client secret in a
+/// Basic header, so anything but `https` would hand it to every network hop.
+/// Plain `http` is allowed only to a loopback host, for local development and
+/// tests; anything else is refused before a request is built, never
+/// downgraded.
+fn ensure_secure_token_url(token_url: &str) -> Result<(), Error> {
+    let url = url::Url::parse(token_url).map_err(|error| Error::Config(format!("invalid OAuth token URL: {error}")))?;
+    let loopback = match url.host() {
+        Some(url::Host::Domain(domain)) => domain.eq_ignore_ascii_case("localhost"),
+        Some(url::Host::Ipv4(address)) => address.is_loopback(),
+        Some(url::Host::Ipv6(address)) => address.is_loopback(),
+        None => false,
+    };
+    match url.scheme() {
+        "https" => Ok(()),
+        "http" if loopback => Ok(()),
+        scheme => Err(Error::Config(format!(
+            "refusing to send OAuth client credentials over {scheme:?} to {}: the token URL must use https \
+             (plain http is allowed only for localhost and loopback addresses)",
+            crate::error::redact_url(token_url)
+        ))),
     }
 }
 
@@ -418,6 +471,7 @@ mod tests {
             "id".to_string(),
             "secret".to_string(),
             "read write",
+            &[],
         )
     }
 
@@ -425,10 +479,51 @@ mod tests {
     fn a_relative_token_url_resolves_against_the_base() {
         let base = url::Url::parse("https://api.example.com/v1/").expect("a static base parses");
         // Path-absolute replaces the base path; an absolute token URL is untouched.
-        let relative = TokenProvider::new(&base, "/oauth/token", "id".into(), "secret".into(), "");
+        let relative = TokenProvider::new(&base, "/oauth/token", "id".into(), "secret".into(), "", &[]);
         assert_eq!(relative.token_url, "https://api.example.com/oauth/token");
-        let absolute = TokenProvider::new(&base, "https://auth.example.com/t", "id".into(), "secret".into(), "");
+        let absolute = TokenProvider::new(
+            &base,
+            "https://auth.example.com/t",
+            "id".into(),
+            "secret".into(),
+            "",
+            &[],
+        );
         assert_eq!(absolute.token_url, "https://auth.example.com/t");
+    }
+
+    /// The client secret goes out in a Basic header, so a token URL that is not
+    /// https (bar loopback) is refused before any request is sent.
+    #[tokio::test]
+    async fn refuses_a_plain_http_token_url_off_loopback() {
+        for (base, token_url) in [
+            ("https://api.example.com/v1/", "http://auth.example.com/oauth/token"),
+            // A relative token URL inherits the base URL's scheme.
+            ("http://api.example.com/v1/", "/oauth/token"),
+            ("https://api.example.com/v1/", "ftp://auth.example.com/oauth/token"),
+        ] {
+            let base = url::Url::parse(base).expect("a static base parses");
+            let provider = TokenProvider::new(&base, token_url, "id".into(), "secret".into(), "", &[]);
+            let transport = ScriptedTransport::new(vec![]);
+            let error = token(&provider, &transport)
+                .await
+                .expect_err("an insecure token URL must be refused");
+            assert!(matches!(error, Error::Config(_)), "{token_url}: {error:?}");
+            assert_eq!(transport.calls(), 0, "{token_url}: no request may be sent");
+        }
+        for token_url in [
+            "http://localhost:8080/t",
+            "http://127.0.0.1:8080/t",
+            "http://[::1]:8080/t",
+        ] {
+            let base = url::Url::parse("https://api.example.com/v1/").expect("a static base parses");
+            let provider = TokenProvider::new(&base, token_url, "id".into(), "secret".into(), "", &[]);
+            let transport = ScriptedTransport::new(vec![(200, r#"{"access_token":"local"}"#)]);
+            assert_eq!(
+                token(&provider, &transport).await.expect("loopback http is allowed"),
+                "local"
+            );
+        }
     }
 
     async fn token(provider: &TokenProvider, transport: &ScriptedTransport) -> Result<String, Error> {

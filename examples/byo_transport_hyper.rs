@@ -88,8 +88,8 @@ fn classify(error: hyper_util::client::legacy::Error) -> TransportError {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Mirrors the smoke test's guard: the example always compiles but only
-    // dials a server when explicitly pointed at one.
+    // The example always compiles but only dials a server when explicitly
+    // pointed at one.
     let Ok(base_url) = std::env::var(BASE_URL_ENV) else {
         println!("Set {BASE_URL_ENV} to run this example against a server.");
         return Ok(());
@@ -98,7 +98,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .base_url(base_url)
         .transport(HyperTransport::new())
         .build()?;
-    let _ = client.planets().list_all_data().send().await?;
+    let _ = client.planets().list().send().await?;
     println!("request flowed through the hyper transport");
     Ok(())
 }
