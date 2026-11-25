@@ -87,13 +87,6 @@ impl Auth {
                 let token = base64_encode(format!("{user}:{pass}").as_bytes());
                 headers.insert(http::header::AUTHORIZATION, auth_value(&format!("Basic {token}"))?);
             }
-        } else if self.api_key_header.is_some() && self.api_key_query.is_some() {
-            if let Some(value) = &self.api_key_header {
-                headers.insert(header_name("X-API-Key")?, auth_value(value)?);
-            }
-            if let Some(value) = &self.api_key_query {
-                url.query_pairs_mut().append_pair("api_key", value);
-            }
         } else if self.bearer_auth.is_some() {
             if let Some(value) = &self.bearer_auth {
                 headers.insert(http::header::AUTHORIZATION, auth_value(&format!("Bearer {value}"))?);
@@ -130,18 +123,16 @@ impl Auth {
     fn selected_group(&self, oauth_ready: bool) -> Option<usize> {
         if self.basic_auth_username.is_some() && self.basic_auth_password.is_some() {
             Some(0)
-        } else if self.api_key_header.is_some() && self.api_key_query.is_some() {
-            Some(1)
         } else if self.bearer_auth.is_some() {
-            Some(2)
+            Some(1)
         } else if self.api_key_query.is_some() {
-            Some(3)
+            Some(2)
         } else if self.api_key_header.is_some() {
-            Some(4)
+            Some(3)
         } else if self.api_key_cookie.is_some() {
-            Some(5)
+            Some(4)
         } else if self.access_token.is_some() || oauth_ready {
-            Some(6)
+            Some(5)
         } else {
             None
         }
@@ -158,7 +149,7 @@ impl Auth {
         if self.access_token.is_some() {
             return false;
         }
-        matches!(self.selected_group(oauth_ready), Some(6))
+        matches!(self.selected_group(oauth_ready), Some(5))
     }
 
     /// Whether another configured alternative can authenticate this request
