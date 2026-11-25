@@ -18,10 +18,15 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 
 use crate::error::{ApiError, Error};
+use crate::platform::AttemptHeaders;
 use crate::transport::{SdkBody, Sleep, Transport, TransportError, TransportErrorKind};
 
 /// Header inspected for a server-assigned request id used in error reports.
 const REQUEST_ID_HEADER: &str = "x-request-id";
+
+/// Non-standard response header through which a server states whether a
+/// failed request should be retried (see [`should_retry_response`]).
+const SHOULD_RETRY_HEADER: &str = "x-should-retry";
 
 /// Default cap on buffered response bodies, in bytes (64 MiB).
 ///
@@ -42,14 +47,30 @@ pub(crate) const DEFAULT_MAX_RESPONSE_SIZE: usize = 64 * 1024 * 1024;
 /// an opportunistic optimization bound, never a correctness requirement.
 const RETRY_DRAIN_LIMIT: usize = 64 * 1024;
 
+/// How long a discarded retryable-status or redirect body may take to drain
+/// before it is dropped instead (1 s).
+///
+/// The drain runs outside every deadline, and the OAuth token exchange holds
+/// its single-flight lock across it: a server that sends a 503 and then stalls
+/// its body would otherwise hang that request and every request queued behind
+/// the lock. Dropping the body only costs the keep-alive connection.
+const RETRY_DRAIN_TIMEOUT: Duration = Duration::from_secs(1);
+
+/// Most redirects one request follows before it fails (20).
+const MAX_REDIRECTS: usize = 20;
+
+/// Headers that carry credentials whatever auth schemes the API declares;
+/// dropped, with the scheme-specific ones, when a redirect leaves the origin.
+const ALWAYS_CREDENTIAL_HEADERS: [&str; 3] = ["authorization", "cookie", "proxy-authorization"];
+
 /// Upper bound on honoring a server-provided `Retry-After` delay (60 s).
 ///
 /// Deliberately separate from [`RetryPolicy::max_backoff`], which caps only
 /// the client's own exponential backoff: clamping a `Retry-After: 45` down to
-/// 8 s would replay straight into the same rate-limit window. Within the
-/// ceiling the server's delay is honored in full; above it the retry is
-/// abandoned and the response returned as the terminal result — the server
-/// has told us to go away for longer than we are willing to stall the caller.
+/// that cap would replay straight into the same rate-limit window. Within the
+/// ceiling the server's delay is honored in full; above it the header is
+/// ignored and the client's own backoff applies, so a hostile or confused
+/// server cannot park the caller's future for an arbitrary time.
 const RETRY_AFTER_CEILING: Duration = Duration::from_secs(60);
 
 /// Structured [`tracing`](https://docs.rs/tracing) instrumentation for the
@@ -192,7 +213,8 @@ pub(crate) fn trace_oauth_fallback() {
 
 /// Retry policy applied to every request issued by the client.
 ///
-/// Retries cover transient transport failures and retryable status codes (see
+/// Retries cover transient transport failures and retryable responses (see
+/// [`should_retry_response`]: the server's `x-should-retry` header, else
 /// [`should_retry_status`]). Backoff grows exponentially from
 /// `initial_backoff`, capped at `max_backoff`; a `Retry-After` response header
 /// overrides the computed delay when present (see [`RETRY_AFTER_CEILING`]).
@@ -212,7 +234,7 @@ pub(crate) struct RetryPolicy {
 }
 
 impl RetryPolicy {
-    /// Creates a policy with sensible exponential-backoff bounds.
+    /// Creates a policy with the crate's exponential-backoff bounds.
     pub(crate) fn new(max_retries: u32) -> Self {
         Self {
             max_retries,
@@ -255,13 +277,34 @@ impl RetryPolicy {
 /// Returns [`Error::Transport`] when every allowed attempt failed at the
 /// transport level (connection, timeout, protocol) or the deadline elapsed
 /// before response headers arrived.
-pub async fn send_with_retries(
+pub(crate) async fn send_with_retries(
     transport: &dyn Transport,
     sleep: &dyn Sleep,
     request: http::Request<SdkBody>,
     max_retries: u32,
     deadline: Option<Duration>,
     keyed: bool,
+) -> Result<http::Response<SdkBody>, Error> {
+    let stamp = AttemptHeaders::plan(request.headers(), deadline);
+    send_attempts(transport, sleep, request, max_retries, deadline, keyed, stamp).await
+}
+
+/// The retry loop behind [`send_with_retries`]; `stamp` decides which
+/// per-attempt headers each attempt carries.
+///
+/// Called directly, with `AttemptHeaders::default()` (no attempt headers), by
+/// the two requests that are not ordinary API calls and so carry none of the
+/// SDK's `X-Scalar-*` headers: the OAuth token exchange, whose endpoint may
+/// belong to a separate identity provider, and a signed-URL fetch, which sends
+/// only the headers the signed URL approved.
+pub(crate) async fn send_attempts(
+    transport: &dyn Transport,
+    sleep: &dyn Sleep,
+    request: http::Request<SdkBody>,
+    max_retries: u32,
+    deadline: Option<Duration>,
+    keyed: bool,
+    stamp: AttemptHeaders,
 ) -> Result<http::Response<SdkBody>, Error> {
     let policy = RetryPolicy::new(max_retries);
     // Whether a *possibly-processed* failure may be replayed: retrying a
@@ -276,7 +319,9 @@ pub async fn send_with_retries(
     loop {
         // A one-shot streaming body cannot be replayed; send the original once
         // (still under the deadline) and stop.
-        let Some(current) = clone_request(&request) else {
+        let Some(mut current) = clone_request(&request) else {
+            let mut request = request;
+            stamp.apply(request.headers_mut(), attempt);
             trace::attempt(request.method(), request.uri(), attempt);
             return match execute_with_deadline(transport, sleep, request, deadline).await {
                 Ok(response) => {
@@ -289,31 +334,30 @@ pub async fn send_with_retries(
                 }
             };
         };
+        // Each attempt is a fresh clone of the caller's request, so the
+        // per-attempt headers are stamped onto the clone and never accumulate.
+        stamp.apply(current.headers_mut(), attempt);
         trace::attempt(current.method(), current.uri(), attempt);
         match execute_with_deadline(transport, sleep, current, deadline).await {
             Ok(response) => {
-                if attempt < policy.max_retries && should_retry_status(response.status().as_u16(), idempotent) {
+                if attempt < policy.max_retries && should_retry_response(&response, idempotent) {
                     // `source` is carried alongside the delay purely so the
                     // retry event can say whether the server dictated the wait.
                     let (delay, source) = match retry_after(response.headers()) {
-                        // The server named a delay past what we will wait out:
-                        // do not retry — hand the response back as the terminal
-                        // result instead of stalling the caller's future.
-                        Some(after) if after > RETRY_AFTER_CEILING => {
-                            trace::completed(response.status(), attempt + 1);
-                            return Ok(response);
-                        }
                         // Within the ceiling the server's delay is honored in
                         // full: sleeping less (e.g. clamping to max_backoff)
-                        // would replay into the same rate-limit window.
-                        Some(after) => (after, "retry-after"),
-                        None => (backoff(&policy, attempt), "backoff"),
+                        // would replay into the same rate-limit window. A
+                        // longer delay is not waited out; it falls back to the
+                        // client's own backoff like a missing header.
+                        Some(after) if after <= RETRY_AFTER_CEILING => (after, "retry-after"),
+                        _ => (backoff(&policy, attempt), "backoff"),
                     };
                     trace::retry_status(response.status(), delay, source);
                     attempt += 1;
-                    // Drain the discarded error body (bounded) before backing
-                    // off so the connection can be kept alive for the retry.
-                    drain_for_reuse(response.into_body()).await;
+                    // Drain the discarded error body (bounded in size and time)
+                    // before backing off so the connection can be kept alive
+                    // for the retry.
+                    drain_with_timeout(sleep, response.into_body()).await;
                     sleep.sleep(delay).await;
                     continue;
                 }
@@ -366,7 +410,7 @@ async fn execute_with_deadline(
 
 /// Bounds a buffered response-body read by `deadline`.
 ///
-/// [`send_with_retries`] races the transport against the deadline only up to
+/// `send_with_retries` races the transport against the deadline only up to
 /// response **headers**; the body is a stream consumed afterwards, deliberately
 /// left unbounded so SSE and long downloads are not killed mid-flight. That is
 /// right for streaming and wrong for everything else — a server that sends
@@ -377,7 +421,7 @@ async fn execute_with_deadline(
 /// opted out for free: streamed responses are handed back raw and never come
 /// through here.
 ///
-/// This sits *outside* [`send_with_retries`] on purpose, so a body timeout gets
+/// This sits *outside* `send_with_retries` on purpose, so a body timeout gets
 /// zero retries — the request already reached the server and may not be
 /// idempotent — while a stalled header phase still gets `max_retries` attempts.
 ///
@@ -611,6 +655,179 @@ async fn drain_for_reuse(body: SdkBody) {
     }
 }
 
+/// [`drain_for_reuse`] raced against [`RETRY_DRAIN_TIMEOUT`].
+///
+/// Losing the race drops the body, which closes the connection — the same
+/// outcome as a body over the size limit.
+async fn drain_with_timeout(sleep: &dyn Sleep, body: SdkBody) {
+    let drain = std::pin::pin!(drain_for_reuse(body));
+    let _ = select(drain, sleep.sleep(RETRY_DRAIN_TIMEOUT)).await;
+}
+
+/// Where a client places its credentials, so a redirect that leaves the origin
+/// can drop them.
+///
+/// Rendered per SDK from its auth schemes: `headers` holds the lowercased
+/// header names they set (beyond the always-dropped `Authorization`, `Cookie`,
+/// and `Proxy-Authorization`), `query` the query parameter names.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct CredentialPlacement {
+    /// Lowercased names of the headers the API's auth schemes set.
+    pub(crate) headers: &'static [&'static str],
+    /// Names of the query parameters the API's auth schemes set.
+    pub(crate) query: &'static [&'static str],
+}
+
+/// Sends a request through [`send_with_retries`], following redirects in the
+/// SDK rather than in the transport.
+///
+/// Platform HTTP clients follow a redirect by re-sending nearly every header
+/// to wherever the server points (reqwest drops only `Authorization`,
+/// `Cookie`, and `Proxy-Authorization` across hosts), so a header-placed API
+/// key reaches a foreign host. The bundled transport therefore follows none, and
+/// this follows 301/302/303/307/308 itself, at most [`MAX_REDIRECTS`] hops:
+///
+/// - `Location` resolves against the current URL; a non-HTTP target and an
+///   https→http downgrade are refused.
+/// - A 303 (except to `HEAD`), and a 301/302 answering a `POST`, becomes a
+///   bodiless `GET` with no `Content-*` headers. Every other redirect keeps
+///   the method and body, and is refused when the body is a one-shot stream.
+/// - On the original origin (scheme, host, port) credentials are kept,
+///   including query credentials the `Location` does not carry itself. Once a
+///   hop leaves it, `Authorization`, `Cookie`, `Proxy-Authorization`, and every
+///   header in `credentials` are dropped for the rest of the chain, and no
+///   query credential is added to any later target.
+///
+/// A 3xx with no `Location`, or any other status, is returned as the response.
+///
+/// # Errors
+///
+/// Everything [`send_with_retries`] returns, plus [`Error::Transport`] when a
+/// redirect is refused or the hop limit is reached.
+pub(crate) async fn send_following_redirects(
+    transport: &dyn Transport,
+    sleep: &dyn Sleep,
+    request: http::Request<SdkBody>,
+    max_retries: u32,
+    deadline: Option<Duration>,
+    keyed: bool,
+    credentials: CredentialPlacement,
+) -> Result<http::Response<SdkBody>, Error> {
+    // Every request the client builds has an absolute URI; one that does not
+    // parse has nowhere to resolve a `Location` against, so it is sent as is.
+    let Ok(mut current) = url::Url::parse(&request.uri().to_string()) else {
+        return send_with_retries(transport, sleep, request, max_retries, deadline, keyed).await;
+    };
+    let origin = current.origin();
+    let query_credentials: Vec<(String, String)> = current
+        .query_pairs()
+        .filter(|(name, _)| credentials.query.contains(&name.as_ref()))
+        .map(|(name, value)| (name.into_owned(), value.into_owned()))
+        .collect();
+    let mut method = request.method().clone();
+    let mut headers = request.headers().clone();
+    let version = request.version();
+    let extensions = request.extensions().clone();
+    // Kept for hops that resend the body; `None` for a one-shot stream.
+    let mut replay = request.body().try_replay();
+    let mut left_origin = false;
+    let mut response = send_with_retries(transport, sleep, request, max_retries, deadline, keyed).await?;
+    let mut hops = 0;
+    loop {
+        let status = response.status().as_u16();
+        if !matches!(status, 301 | 302 | 303 | 307 | 308) {
+            return Ok(response);
+        }
+        let Some(location) = response
+            .headers()
+            .get(http::header::LOCATION)
+            .and_then(|value| value.to_str().ok())
+        else {
+            return Ok(response);
+        };
+        if hops == MAX_REDIRECTS {
+            return Err(redirect_refused(format!(
+                "stopped after following {MAX_REDIRECTS} redirects"
+            )));
+        }
+        let mut target = current
+            .join(location)
+            .map_err(|_| redirect_refused("the redirect Location is not a valid URL".to_string()))?;
+        if !matches!(target.scheme(), "http" | "https") {
+            return Err(redirect_refused(format!(
+                "refused a redirect to a {:?} URL",
+                target.scheme()
+            )));
+        }
+        if current.scheme() == "https" && target.scheme() == "http" {
+            return Err(redirect_refused("refused a redirect from https to http".to_string()));
+        }
+        // 303 means "see this other resource"; 301/302 after a POST are turned
+        // into a GET by every browser, and servers rely on that.
+        let to_get = (status == 303 && method != http::Method::HEAD)
+            || (matches!(status, 301 | 302) && method == http::Method::POST);
+        if to_get {
+            method = http::Method::GET;
+            replay = Some(SdkBody::empty());
+            let content: Vec<http::HeaderName> = headers
+                .keys()
+                .filter(|name| name.as_str().starts_with("content-"))
+                .cloned()
+                .collect();
+            for name in content {
+                headers.remove(name);
+            }
+            headers.remove(http::header::TRANSFER_ENCODING);
+        }
+        let Some(body) = replay.as_ref().and_then(SdkBody::try_replay) else {
+            return Err(redirect_refused(format!(
+                "cannot follow a {status} redirect: the request body was a stream that cannot be sent again"
+            )));
+        };
+        if !left_origin && target.origin() != origin {
+            left_origin = true;
+            for name in ALWAYS_CREDENTIAL_HEADERS.iter().chain(credentials.headers) {
+                headers.remove(*name);
+            }
+        }
+        if !left_origin {
+            // Same origin: the credentials stay, and a query credential the
+            // `Location` dropped is put back rather than silently lost.
+            let present: Vec<String> = target.query_pairs().map(|(name, _)| name.into_owned()).collect();
+            let missing: Vec<&(String, String)> = query_credentials
+                .iter()
+                .filter(|(name, _)| !present.contains(name))
+                .collect();
+            if !missing.is_empty() {
+                let mut pairs = target.query_pairs_mut();
+                for (name, value) in missing {
+                    pairs.append_pair(name, value);
+                }
+            }
+        }
+        let uri = target
+            .as_str()
+            .parse::<http::Uri>()
+            .map_err(|_| redirect_refused("the redirect Location is not a valid URL".to_string()))?;
+        drain_with_timeout(sleep, response.into_body()).await;
+        let mut next = http::Request::new(body);
+        *next.method_mut() = method.clone();
+        *next.uri_mut() = uri;
+        *next.version_mut() = version;
+        *next.headers_mut() = headers.clone();
+        *next.extensions_mut() = extensions.clone();
+        hops += 1;
+        current = target;
+        response = send_with_retries(transport, sleep, next, max_retries, deadline, keyed).await?;
+    }
+}
+
+/// The error a refused or exhausted redirect fails with: a connection-level
+/// failure, since no response the caller asked for was reached.
+fn redirect_refused(message: String) -> Error {
+    Error::from(TransportError::msg(TransportErrorKind::Other, message))
+}
+
 /// Extracts the request-id header value, if present and valid UTF-8.
 pub(crate) fn request_id(headers: &HeaderMap) -> Option<String> {
     headers
@@ -619,7 +836,43 @@ pub(crate) fn request_id(headers: &HeaderMap) -> Option<String> {
         .map(str::to_owned)
 }
 
-/// Whether a response status is worth retrying for this request.
+/// Whether a response is worth retrying for this request.
+///
+/// On an error status (4xx/5xx) the server's `x-should-retry` header, when it
+/// is exactly `true` or `false`, decides outright and takes precedence over the
+/// status taxonomy in [`should_retry_status`]: `false` suppresses a retry the
+/// status would allow (a 503 the server knows will not clear), and `true`
+/// forces one the status would refuse (a 400 caused by a transient upstream
+/// condition), for any method — the server is asserting that replaying the
+/// request is safe, which is exactly what the method-based rule could only
+/// guess at. Every other bound still applies: the retry stays within
+/// `max_retries`, a non-replayable streaming body is still sent once, and the
+/// delay still follows `Retry-After` or the backoff. A success or redirect is
+/// never retried whatever the header says, and any other header value is
+/// ignored, leaving the status taxonomy in charge.
+fn should_retry_response(response: &http::Response<SdkBody>, idempotent: bool) -> bool {
+    let status = response.status().as_u16();
+    if status < 400 {
+        return false;
+    }
+    server_retry_directive(response.headers()).unwrap_or_else(|| should_retry_status(status, idempotent))
+}
+
+/// Reads the `x-should-retry` header: `Some(true)` for `true`, `Some(false)`
+/// for `false`, and `None` for an absent header or any other value.
+///
+/// Matched exactly (after trimming surrounding whitespace), so a typo or a
+/// differently cased value never overrides the status taxonomy by accident.
+fn server_retry_directive(headers: &HeaderMap) -> Option<bool> {
+    match headers.get(SHOULD_RETRY_HEADER)?.to_str().ok()?.trim() {
+        "true" => Some(true),
+        "false" => Some(false),
+        _ => None,
+    }
+}
+
+/// Whether a response status is worth retrying for this request, absent an
+/// `x-should-retry` directive from the server (see [`should_retry_response`]).
 ///
 /// The taxonomy splits on whether the server may have run the request:
 ///
@@ -674,31 +927,51 @@ fn is_retryable_transport(error: &TransportError, idempotent: bool) -> bool {
     }
 }
 
-/// Parses a `Retry-After` header, in either RFC 7231 form.
+/// Parses the server's requested retry delay: `retry-after-ms`, then a
+/// `Retry-After` header in either RFC 7231 form.
 ///
-/// The value is `delta-seconds` (a whole number) or an HTTP-date; the latter is
-/// resolved to a delay from now (servers commonly send it on 429/503). The
-/// caller honors the delay in full up to [`RETRY_AFTER_CEILING`] and abandons
-/// the retry beyond it.
+/// `retry-after-ms` is a number of milliseconds, possibly fractional, which
+/// rate limiters send when whole seconds are too coarse; it wins over
+/// `Retry-After` when both are present and usable. `Retry-After` is
+/// `delta-seconds` (a whole number) or an HTTP-date; the latter is resolved to
+/// a delay from now (servers commonly send it on 429/503). The caller honors
+/// the delay in full up to [`RETRY_AFTER_CEILING`] and falls back to its own
+/// backoff beyond it. A zero delay, a date already past, and anything
+/// unparseable yield `None`, so the retry falls back to the client's own
+/// backoff rather than replaying immediately.
 fn retry_after(headers: &HeaderMap) -> Option<Duration> {
+    let millis = headers
+        .get("retry-after-ms")
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| value.trim().parse::<f64>().ok())
+        .filter(|millis| millis.is_finite() && *millis > 0.0);
+    if let Some(millis) = millis {
+        // Clamped before the conversion, which panics on a value past
+        // `Duration::MAX`; anything above the ceiling is ignored by the caller.
+        return Some(Duration::from_secs_f64(millis.min(1e12) / 1000.0));
+    }
     let value = headers.get(http::header::RETRY_AFTER)?.to_str().ok()?.trim();
     if let Ok(seconds) = value.parse::<u64>() {
-        return Some(Duration::from_secs(seconds));
+        return (seconds > 0).then(|| Duration::from_secs(seconds));
     }
     retry_after_date(value).map(Duration::from_secs)
 }
 
 /// Resolves an HTTP-date `Retry-After` (IMF-fixdate, e.g.
-/// `Wed, 21 Oct 2015 07:28:00 GMT`) into seconds from now, `0` if already past.
+/// `Wed, 21 Oct 2015 07:28:00 GMT`) into seconds from now, or `None` when it is
+/// malformed or not in the future.
 ///
 /// Parsed without a date dependency so the transport runtime stays
-/// zero-dependency regardless of whether the SDK pulls in `chrono`.
+/// zero-dependency regardless of whether the SDK pulls in `chrono`. Every
+/// field is range-checked before the arithmetic, because the header is server
+/// input: an unchecked year like `99999999999` overflowed the day count and
+/// panicked in a build with overflow checks on.
 fn retry_after_date(value: &str) -> Option<u64> {
     let parts: Vec<&str> = value.split_whitespace().collect();
     if parts.len() != 6 {
         return None;
     }
-    let day: i64 = parts[1].parse().ok()?;
+    let day: i64 = parts[1].parse().ok().filter(|day| (1..=31).contains(day))?;
     let month = match parts[2] {
         "Jan" => 1,
         "Feb" => 2,
@@ -714,26 +987,34 @@ fn retry_after_date(value: &str) -> Option<u64> {
         "Dec" => 12,
         _ => return None,
     };
-    let year: i64 = parts[3].parse().ok()?;
+    let year: i64 = parts[3].parse().ok().filter(|year| (1..=9999).contains(year))?;
     let time: Vec<&str> = parts[4].split(':').collect();
     if time.len() != 3 {
         return None;
     }
-    let hour: i64 = time[0].parse().ok()?;
-    let minute: i64 = time[1].parse().ok()?;
-    let second: i64 = time[2].parse().ok()?;
-    let target = days_from_civil(year, month, day) * 86_400 + hour * 3_600 + minute * 60 + second;
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .ok()?
-        .as_secs() as i64;
-    Some((target - now).max(0) as u64)
+    let hour: i64 = time[0].parse().ok().filter(|hour| (0..=23).contains(hour))?;
+    let minute: i64 = time[1].parse().ok().filter(|minute| (0..=59).contains(minute))?;
+    // 60 admits a leap second.
+    let second: i64 = time[2].parse().ok().filter(|second| (0..=60).contains(second))?;
+    let target = days_from_civil(year, month, day)
+        .checked_mul(86_400)?
+        .checked_add(hour * 3_600 + minute * 60 + second)?;
+    let now = i64::try_from(
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .ok()?
+            .as_secs(),
+    )
+    .ok()?;
+    u64::try_from(target.checked_sub(now)?)
+        .ok()
+        .filter(|seconds| *seconds > 0)
 }
 
 /// Days since the Unix epoch for a civil (proleptic Gregorian) date.
 ///
 /// Howard Hinnant's `days_from_civil` algorithm, valid for any year.
-fn days_from_civil(year: i64, month: i64, day: i64) -> i64 {
+pub(crate) fn days_from_civil(year: i64, month: i64, day: i64) -> i64 {
     let year = if month <= 2 { year - 1 } else { year };
     let era = (if year >= 0 { year } else { year - 399 }) / 400;
     let year_of_era = year - era * 400;
@@ -919,6 +1200,80 @@ pub fn encode_path_param(value: &str) -> String {
         }
     }
     encoded
+}
+
+/// Percent-encodes a path-parameter value that fills a whole path segment,
+/// refusing one that would send the request to a different endpoint.
+///
+/// `.` is unreserved, so [`encode_path_param`] keeps it, and every URL library
+/// resolves a `.` or `..` segment by walking up the path: `items/{id}` with
+/// `..` would reach `/` instead, with the client's credentials. An empty value
+/// addresses the parent collection the same way. Path parameters are often
+/// end-user input, so these are refused before any request is built.
+///
+/// # Errors
+///
+/// Returns [`Error::Config`] for an empty, `.`, or `..` value.
+// Unused in an SDK whose operations take no path parameters.
+#[allow(dead_code)]
+pub(crate) fn path_param(value: &str) -> Result<String, Error> {
+    match value {
+        "" | "." | ".." => Err(Error::Config(format!(
+            "path parameter value {value:?} is not allowed: it would change which endpoint the request reaches"
+        ))),
+        _ => Ok(encode_path_param(value)),
+    }
+}
+
+/// Percent-encodes a path-parameter value that shares its segment with other
+/// text or parameters (`/files/{name}.json`), refusing an empty value.
+///
+/// Such a value cannot form a dot segment alone, so `.` and `..` pass here and
+/// the assembled path goes through [`ensure_no_dot_segments`]. An empty value
+/// still re-targets the request (`/batches/{id}:cancel` would send
+/// `/batches/:cancel`), so it is refused like a whole-segment one.
+///
+/// # Errors
+///
+/// Returns [`Error::Config`] for an empty value.
+// Unused unless some parameter fills only part of a path segment.
+#[allow(dead_code)]
+pub(crate) fn path_param_part(value: &str) -> Result<String, Error> {
+    if value.is_empty() {
+        return Err(Error::Config(
+            "path parameter value \"\" is not allowed: it would change which endpoint the request reaches".to_owned(),
+        ));
+    }
+    Ok(encode_path_param(value))
+}
+
+/// Refuses an assembled path containing a `.` or `..` segment.
+///
+/// Covers parameters that fill only part of a segment, where two of them can
+/// still meet as `..` (`{a}{b}` with `.` and `.`); a whole-segment parameter is
+/// already checked by [`path_param`], and an empty one by [`path_param_part`].
+///
+/// # Errors
+///
+/// Returns [`Error::Config`] naming the offending segment.
+// Unused unless some parameter fills only part of a path segment.
+#[allow(dead_code)]
+pub(crate) fn ensure_no_dot_segments(path: &str) -> Result<(), Error> {
+    let path = path.split(['?', '#']).next().unwrap_or(path);
+    match path.split('/').find(|segment| matches!(*segment, "." | "..")) {
+        Some(segment) => Err(Error::Config(format!(
+            "path {path:?} contains a {segment:?} segment, which would change which endpoint the request reaches"
+        ))),
+        None => Ok(()),
+    }
+}
+
+/// Runs a fallible path build, for `paginate()`, which returns a bare pager
+/// and so cannot use `?` itself; the pager reports the error on its first fetch.
+// Unused unless a paginated operation takes path parameters.
+#[allow(dead_code)]
+pub(crate) fn assemble_path(build: impl FnOnce() -> Result<String, Error>) -> Result<String, Error> {
+    build()
 }
 
 #[cfg(test)]
@@ -1244,7 +1599,7 @@ mod tests {
 
     #[tokio::test]
     async fn retry_after_within_ceiling_sleeps_the_full_server_delay() {
-        // 45 s is far past max_backoff (8 s): the server's delay must be
+        // 45 s is far past the default max_backoff: the server's delay must be
         // honored in full, not clamped back into the same rate-limit window.
         let transport = ScriptedTransport::new(vec![scripted(429, Some(45), "slow down"), scripted(200, None, "{}")]);
         let sleep = RecordingSleep::default();
@@ -1253,21 +1608,441 @@ mod tests {
             .expect("scripted attempts cannot fail at the transport level");
         assert_eq!(response.status(), 200);
         assert_eq!(transport.calls(), 2);
-        assert_eq!(sleep.delays(), vec![Duration::from_secs(45)]);
+        // The first delay is the timer the discarded body's drain races.
+        assert_eq!(sleep.delays(), vec![RETRY_DRAIN_TIMEOUT, Duration::from_secs(45)]);
+    }
+
+    /// Builds a scripted response carrying an `x-should-retry` header.
+    fn directed(status: u16, should_retry: &'static str) -> http::Response<SdkBody> {
+        http::Response::builder()
+            .status(status)
+            .header(SHOULD_RETRY_HEADER, should_retry)
+            .body(SdkBody::from_bytes("{}"))
+            .expect("statically valid response parts must build")
     }
 
     #[tokio::test]
-    async fn retry_after_beyond_ceiling_returns_the_response_without_retrying() {
-        // The server told us to go away for longer than we will wait: the 429
-        // is the terminal result, with no sleep and no second attempt.
-        let transport = ScriptedTransport::new(vec![scripted(429, Some(61), "come back tomorrow")]);
+    async fn should_retry_false_suppresses_a_retryable_status() {
+        // 503 retries for every method by default; the server's `false` wins.
+        let transport = ScriptedTransport::new(vec![directed(503, "false")]);
         let sleep = RecordingSleep::default();
         let response = send_with_retries(&transport, &sleep, post_request(), 2, None, false)
             .await
             .expect("scripted attempts cannot fail at the transport level");
-        assert_eq!(response.status(), 429);
+        assert_eq!(response.status(), 503);
         assert_eq!(transport.calls(), 1);
         assert!(sleep.delays().is_empty());
+    }
+
+    #[tokio::test]
+    async fn should_retry_true_forces_a_retry_on_an_unkeyed_post() {
+        // Neither 400 nor 409 is retried by status alone, and a POST is the
+        // strictest method; the server's `true` still forces each replay.
+        let transport = ScriptedTransport::new(vec![
+            directed(400, "true"),
+            directed(409, " true "),
+            scripted(200, None, "{}"),
+        ]);
+        let sleep = RecordingSleep::default();
+        let response = send_with_retries(&transport, &sleep, post_request(), 2, None, false)
+            .await
+            .expect("scripted attempts cannot fail at the transport level");
+        assert_eq!(response.status(), 200);
+        assert_eq!(transport.calls(), 3);
+    }
+
+    #[tokio::test]
+    async fn should_retry_true_stays_within_max_retries() {
+        let transport = ScriptedTransport::new(vec![directed(400, "true"), directed(400, "true")]);
+        let sleep = RecordingSleep::default();
+        let response = send_with_retries(&transport, &sleep, post_request(), 1, None, false)
+            .await
+            .expect("scripted attempts cannot fail at the transport level");
+        assert_eq!(response.status(), 400);
+        assert_eq!(transport.calls(), 2);
+    }
+
+    #[test]
+    fn should_retry_header_never_retries_a_success_and_ignores_other_values() {
+        assert!(!should_retry_response(&directed(200, "true"), true));
+        assert!(!should_retry_response(&directed(302, "true"), true));
+        // An unrecognized value leaves the status taxonomy in charge.
+        assert!(should_retry_response(&directed(503, "TRUE"), false));
+        assert!(!should_retry_response(&directed(400, "yes"), true));
+        assert!(!should_retry_response(&directed(409, "1"), true));
+    }
+
+    #[test]
+    fn retry_after_ignores_out_of_range_and_past_values() {
+        let header = |value: &str| {
+            let mut headers = HeaderMap::new();
+            headers.insert(
+                http::header::RETRY_AFTER,
+                value.parse().expect("a static header value parses"),
+            );
+            retry_after(&headers)
+        };
+        // A year far past what the day arithmetic can hold used to overflow and
+        // panic; every field is range-checked first now.
+        assert_eq!(header("Fri, 01 Jan 99999999999 00:00:00 GMT"), None);
+        assert_eq!(header("Fri, 99999999999 Jan 2030 00:00:00 GMT"), None);
+        assert_eq!(header("Fri, 01 Jan 2030 99999999999:00:00 GMT"), None);
+        assert_eq!(header("Fri, 01 Jan 2030 00:00:-5 GMT"), None);
+        // Already past, or zero: no server delay, so the normal backoff applies.
+        assert_eq!(header("Wed, 21 Oct 2015 07:28:00 GMT"), None);
+        assert_eq!(header("0"), None);
+        assert_eq!(header("-5"), None);
+        assert_eq!(header("soon"), None);
+        assert_eq!(header("7"), Some(Duration::from_secs(7)));
+        // `retry-after-ms` wins when it is a positive number of milliseconds.
+        let millis = |ms: &str, seconds: Option<&str>| {
+            let mut headers = HeaderMap::new();
+            headers.insert("retry-after-ms", ms.parse().expect("a static header value parses"));
+            if let Some(seconds) = seconds {
+                headers.insert(
+                    http::header::RETRY_AFTER,
+                    seconds.parse().expect("a static header value parses"),
+                );
+            }
+            retry_after(&headers)
+        };
+        assert_eq!(millis("1200", Some("7")), Some(Duration::from_millis(1200)));
+        assert_eq!(millis("2.5", None), Some(Duration::from_micros(2500)));
+        assert_eq!(millis("0", Some("7")), Some(Duration::from_secs(7)));
+        assert_eq!(millis("soon", None), None);
+        assert_eq!(millis("NaN", None), None);
+        // A date in the future resolves to a delay from now.
+        assert!(header("Fri, 01 Jan 9999 00:00:00 GMT").is_some_and(|delay| delay > Duration::from_secs(60)));
+    }
+
+    #[test]
+    fn path_params_that_would_change_the_endpoint_are_refused() {
+        for value in ["", ".", ".."] {
+            assert!(
+                matches!(path_param(value), Err(Error::Config(_))),
+                "{value:?} must be refused"
+            );
+        }
+        // A dot inside a value, or an already-encoded dot, is an ordinary character.
+        assert_eq!(path_param("a.b").expect("an ordinary value"), "a.b");
+        assert_eq!(path_param("...").expect("three dots are not a dot segment"), "...");
+        assert_eq!(path_param("%2e%2e").expect("an encoded value"), "%252e%252e");
+        assert_eq!(path_param("../x").expect("a slash is encoded"), "..%2Fx");
+
+        // A parameter sharing its segment refuses only an empty value.
+        assert!(matches!(path_param_part(""), Err(Error::Config(_))));
+        assert_eq!(path_param_part(".").expect("a partial-segment dot"), ".");
+
+        assert!(ensure_no_dot_segments("/files/../x").is_err());
+        assert!(ensure_no_dot_segments("/files/./x").is_err());
+        assert!(ensure_no_dot_segments("/files/..json").is_ok());
+        // Only the path takes part in dot-segment removal.
+        assert!(ensure_no_dot_segments("/files/x?next=..").is_ok());
+    }
+
+    /// One request a [`RedirectingTransport`] saw.
+    #[derive(Debug, Clone)]
+    struct Seen {
+        method: http::Method,
+        uri: String,
+        headers: HeaderMap,
+        body: Option<Bytes>,
+    }
+
+    /// Answers each request with the next scripted response and records it.
+    #[derive(Debug)]
+    struct RedirectingTransport {
+        responses: std::sync::Mutex<std::collections::VecDeque<http::Response<SdkBody>>>,
+        seen: std::sync::Mutex<Vec<Seen>>,
+    }
+
+    impl RedirectingTransport {
+        fn new(responses: Vec<http::Response<SdkBody>>) -> Self {
+            Self {
+                responses: std::sync::Mutex::new(responses.into_iter().collect()),
+                seen: std::sync::Mutex::new(Vec::new()),
+            }
+        }
+
+        fn seen(&self) -> Vec<Seen> {
+            self.seen.lock().expect("seen lock").clone()
+        }
+    }
+
+    impl Transport for RedirectingTransport {
+        fn execute(
+            &self,
+            request: http::Request<SdkBody>,
+        ) -> crate::transport::BoxFuture<'_, Result<http::Response<SdkBody>, TransportError>> {
+            self.seen.lock().expect("seen lock").push(Seen {
+                method: request.method().clone(),
+                uri: request.uri().to_string(),
+                headers: request.headers().clone(),
+                body: request.body().as_bytes().cloned(),
+            });
+            let response = self
+                .responses
+                .lock()
+                .expect("scripted responses lock")
+                .pop_front()
+                .expect("a scripted response for every request");
+            Box::pin(std::future::ready(Ok(response)))
+        }
+    }
+
+    /// A redirect with `status` to `location`.
+    fn redirect(status: u16, location: &str) -> http::Response<SdkBody> {
+        http::Response::builder()
+            .status(status)
+            .header(http::header::LOCATION, location)
+            .body(SdkBody::empty())
+            .expect("statically valid response parts must build")
+    }
+
+    /// The credential placement the redirect tests use: one header key and one query key.
+    const PLACEMENT: CredentialPlacement = CredentialPlacement {
+        headers: &["x-api-key"],
+        query: &["api_key"],
+    };
+
+    /// A credentialed POST with a JSON body to `uri`.
+    fn credentialed_post(uri: &str, body: SdkBody) -> http::Request<SdkBody> {
+        http::Request::builder()
+            .method(http::Method::POST)
+            .uri(uri)
+            .header(http::header::AUTHORIZATION, "Bearer secret")
+            .header("x-api-key", "key")
+            .header(http::header::COOKIE, "sid=1")
+            .header(http::header::CONTENT_TYPE, "application/json")
+            .header("x-trace", "t")
+            .body(body)
+            .expect("statically valid request parts must build")
+    }
+
+    #[tokio::test]
+    async fn a_cross_origin_redirect_drops_every_credential_for_the_rest_of_the_chain() {
+        let transport = RedirectingTransport::new(vec![
+            redirect(307, "https://elsewhere.example/landing?x=1"),
+            redirect(307, "https://api.example.com/back"),
+            scripted(200, None, "{}"),
+        ]);
+        let request = credentialed_post("https://api.example.com/v1/items?api_key=q", SdkBody::from_bytes("{}"));
+        let response = send_following_redirects(
+            &transport,
+            &RecordingSleep::default(),
+            request,
+            0,
+            None,
+            false,
+            PLACEMENT,
+        )
+        .await
+        .expect("the chain ends in a 200");
+        assert_eq!(response.status(), 200);
+        let seen = transport.seen();
+        assert_eq!(seen.len(), 3);
+        assert_eq!(seen[1].uri, "https://elsewhere.example/landing?x=1");
+        // Back on the original origin, the credentials stay dropped.
+        assert_eq!(seen[2].uri, "https://api.example.com/back");
+        for hop in &seen[1..] {
+            for name in ["authorization", "x-api-key", "cookie"] {
+                assert!(!hop.headers.contains_key(name), "{name} crossed origins: {hop:?}");
+            }
+            // A 307 keeps the method, the body, and the headers that are no credential.
+            assert_eq!(hop.method, http::Method::POST);
+            assert_eq!(hop.body.as_deref(), Some(&b"{}"[..]));
+            assert_eq!(
+                hop.headers.get("x-trace").map(|value| value.as_bytes()),
+                Some(&b"t"[..])
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn a_same_origin_redirect_keeps_credentials_and_the_query_key() {
+        let transport = RedirectingTransport::new(vec![
+            redirect(302, "https://API.example.com:443/landing?y=2"),
+            scripted(200, None, "{}"),
+        ]);
+        let request = http::Request::builder()
+            .uri("https://api.example.com/v1/items?api_key=q")
+            .header(http::header::AUTHORIZATION, "Bearer secret")
+            .header("x-api-key", "key")
+            .body(SdkBody::empty())
+            .expect("statically valid request parts must build");
+        send_following_redirects(
+            &transport,
+            &RecordingSleep::default(),
+            request,
+            0,
+            None,
+            false,
+            PLACEMENT,
+        )
+        .await
+        .expect("the chain ends in a 200");
+        let seen = transport.seen();
+        assert_eq!(seen[1].uri, "https://api.example.com/landing?y=2&api_key=q");
+        assert!(seen[1].headers.contains_key(http::header::AUTHORIZATION));
+        assert!(seen[1].headers.contains_key("x-api-key"));
+    }
+
+    #[tokio::test]
+    async fn see_other_and_a_redirected_post_become_a_bodiless_get() {
+        for status in [301, 302, 303] {
+            let transport = RedirectingTransport::new(vec![redirect(status, "/landing"), scripted(200, None, "{}")]);
+            let request = credentialed_post("https://api.example.com/items", SdkBody::from_bytes("{}"));
+            send_following_redirects(
+                &transport,
+                &RecordingSleep::default(),
+                request,
+                0,
+                None,
+                false,
+                PLACEMENT,
+            )
+            .await
+            .expect("the chain ends in a 200");
+            let seen = transport.seen();
+            assert_eq!(seen[1].method, http::Method::GET, "{status}");
+            assert_eq!(seen[1].body.as_deref(), Some(&b""[..]), "{status}");
+            assert!(!seen[1].headers.contains_key(http::header::CONTENT_TYPE), "{status}");
+            assert!(seen[1].headers.contains_key(http::header::AUTHORIZATION), "{status}");
+        }
+    }
+
+    #[tokio::test]
+    async fn refused_redirects_send_nothing_further() {
+        let cases = [
+            (307, "http://api.example.com/landing"),
+            (302, "file:///etc/passwd"),
+            (302, "ftp://api.example.com/x"),
+        ];
+        for (status, location) in cases {
+            let transport = RedirectingTransport::new(vec![redirect(status, location)]);
+            let request = credentialed_post("https://api.example.com/items", SdkBody::from_bytes("{}"));
+            let error = send_following_redirects(
+                &transport,
+                &RecordingSleep::default(),
+                request,
+                0,
+                None,
+                false,
+                PLACEMENT,
+            )
+            .await
+            .expect_err("the redirect must be refused");
+            assert!(matches!(error, Error::Transport(_)), "{location}: {error:?}");
+            assert_eq!(transport.seen().len(), 1, "{location}");
+        }
+
+        // A 307 cannot resend a body read from a one-shot stream.
+        let transport = RedirectingTransport::new(vec![redirect(307, "/landing")]);
+        let stream = futures_util::stream::iter(vec![Ok::<Bytes, TransportError>(Bytes::from_static(b"{}"))]);
+        let request = credentialed_post("https://api.example.com/items", SdkBody::from_stream(stream));
+        let error = send_following_redirects(
+            &transport,
+            &RecordingSleep::default(),
+            request,
+            0,
+            None,
+            false,
+            PLACEMENT,
+        )
+        .await
+        .expect_err("a one-shot body cannot be resent");
+        assert!(matches!(error, Error::Transport(_)), "{error:?}");
+        assert_eq!(transport.seen().len(), 1);
+    }
+
+    #[tokio::test]
+    async fn a_redirect_loop_stops_at_the_cap() {
+        let transport = RedirectingTransport::new((0..=MAX_REDIRECTS).map(|_| redirect(302, "/loop")).collect());
+        let request = http::Request::builder()
+            .uri("https://api.example.com/loop")
+            .body(SdkBody::empty())
+            .expect("statically valid request parts must build");
+        let error = send_following_redirects(
+            &transport,
+            &RecordingSleep::default(),
+            request,
+            0,
+            None,
+            false,
+            PLACEMENT,
+        )
+        .await
+        .expect_err("a loop must fail");
+        assert!(matches!(error, Error::Transport(_)), "{error:?}");
+        assert_eq!(transport.seen().len(), MAX_REDIRECTS + 1);
+    }
+
+    #[tokio::test]
+    async fn a_3xx_without_a_location_is_the_answer() {
+        let transport = RedirectingTransport::new(vec![scripted(304, None, "")]);
+        let request = http::Request::builder()
+            .uri("https://api.example.com/items")
+            .body(SdkBody::empty())
+            .expect("statically valid request parts must build");
+        let response = send_following_redirects(
+            &transport,
+            &RecordingSleep::default(),
+            request,
+            0,
+            None,
+            false,
+            PLACEMENT,
+        )
+        .await
+        .expect("a 304 is returned as is");
+        assert_eq!(response.status(), 304);
+        assert_eq!(transport.seen().len(), 1);
+    }
+
+    #[tokio::test]
+    async fn a_stalled_retry_body_is_abandoned_rather_than_awaited() {
+        // A 503 whose body never finishes: without the drain timer the retry
+        // loop waited on it forever, outside every deadline.
+        let stalled = futures_util::stream::pending::<Result<Bytes, TransportError>>();
+        let first = http::Response::builder()
+            .status(503)
+            .body(SdkBody::from_stream(stalled))
+            .expect("statically valid response parts must build");
+        let transport = ScriptedTransport::new(vec![first, scripted(200, None, "{}")]);
+        let sleep = RecordingSleep::default();
+        let response = send_with_retries(&transport, &sleep, post_request(), 1, None, false)
+            .await
+            .expect("the retry answers");
+        assert_eq!(response.status(), 200);
+        assert_eq!(sleep.delays().first(), Some(&RETRY_DRAIN_TIMEOUT));
+    }
+
+    #[tokio::test]
+    async fn retry_after_beyond_ceiling_falls_back_to_backoff() {
+        // The server named a delay longer than we will wait: the header is
+        // ignored and the retry sleeps the client's own (capped) backoff.
+        let transport = ScriptedTransport::new(vec![
+            scripted(429, Some(86_400), "come back tomorrow"),
+            scripted(200, None, "{}"),
+        ]);
+        let sleep = RecordingSleep::default();
+        let response = send_with_retries(&transport, &sleep, post_request(), 2, None, false)
+            .await
+            .expect("scripted attempts cannot fail at the transport level");
+        assert_eq!(response.status(), 200);
+        assert_eq!(transport.calls(), 2);
+        // The drain timeout races first; the last recorded sleep is the backoff.
+        let slept = *sleep.delays().last().expect("the retry slept before replaying");
+        // Bounded by the crate's own (configurable) backoff cap, not the header.
+        let cap = RetryPolicy::new(2).max_backoff;
+        assert!(slept <= cap, "slept {slept:?} instead of backing off (cap {cap:?})");
+        // A cap configured past the header's delay would let the line above
+        // pass even if the header were honored, so rule that out directly.
+        assert_ne!(
+            slept,
+            Duration::from_secs(86_400),
+            "the over-ceiling Retry-After was honored"
+        );
     }
 
     #[tokio::test]

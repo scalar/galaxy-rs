@@ -43,10 +43,10 @@ It's easy to say you know them all, but do you really? Retrieve all the planets 
 
 | Direction | Type |
 | --- | --- |
-| Response | [`PaginatedResource`](./src/models/planets.rs) |
+| Response | [`PlanetsListResponse`](./src/models/planets.rs) |
 
 ```rust
-let response = client.planets().list_all_data().send().await?;
+let response = client.planets().list().send().await?;
 ```
 
 ### Create a planet
@@ -55,7 +55,7 @@ Time to play god and create a new planet. What do you think? Ah, don't think too
 
 | Direction | Type |
 | --- | --- |
-| Request | [`Planet`](./src/models/planets.rs) |
+| Request | [`PlanetsCreateBody`](./src/models/planets.rs) |
 | Response | [`Planet`](./src/models/planets.rs) |
 
 ```rust
@@ -80,7 +80,7 @@ Sometimes you make mistakes, that's fine. No worries, you can update all planets
 
 | Direction | Type |
 | --- | --- |
-| Request | [`Planet`](./src/models/planets.rs) |
+| Request | [`PlanetsUpdateBody`](./src/models/planets.rs) |
 | Response | [`Planet`](./src/models/planets.rs) |
 
 ```rust
@@ -105,10 +105,10 @@ Got a crazy good photo of a planet? Share it with the world!
 
 | Direction | Type |
 | --- | --- |
-| Response | [`PlanetsDelteImageResponse`](./src/models/planets.rs) |
+| Response | [`PlanetsUploadImageResponse`](./src/models/planets.rs) |
 
 ```rust
-let response = client.planets().delte_image(1).send().await?;
+let response = client.planets().upload_image(1).send().await?;
 ```
 
 ## `CelestialBodies`
@@ -121,7 +121,7 @@ Stars, moons, comets, the occasional rogue asteroid — if it glows or drifts th
 
 | Direction | Type |
 | --- | --- |
-| Request | [`CelestialBody`](./src/models/celestial_bodies.rs) |
+| Request | [`CelestialBodyParam`](./src/models/celestial_bodies.rs) |
 | Response | [`CelestialBody`](./src/models/celestial_bodies.rs) |
 
 ## `Authentication`
@@ -147,7 +147,7 @@ Yeah, this is the boring security stuff. Just get your super secret token and mo
 
 | Direction | Type |
 | --- | --- |
-| Request | [`Credentials`](./src/models/authentication.rs) |
+| Request | [`AuthenticationCreateTokenBody`](./src/models/authentication.rs) |
 | Response | [`Token`](./src/models/authentication.rs) |
 
 ```rust

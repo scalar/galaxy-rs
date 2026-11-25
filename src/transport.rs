@@ -48,10 +48,16 @@ pub use crate::transport_reqwest::ReqwestTransport;
 /// An HTTP backend that executes one request and returns one response.
 ///
 /// This is a deliberately "dumb" transport: retries, backoff, deadlines, auth,
-/// and response decoding all live in the SDK runtime above it, so an
+/// redirects, and response decoding all live in the SDK runtime above it, so an
 /// implementation only has to move one request to the wire and map the result
 /// back. Implementations must be cheap to share (`Send + Sync`) because the
 /// client stores the transport as `Arc<dyn Transport>`.
+///
+/// An implementation must **not** follow redirects: return a 3xx response as
+/// is. The SDK follows redirects itself so it can drop credentials when a
+/// redirect leaves the origin and refuse an https→http downgrade; an HTTP
+/// stack that follows them first re-sends header-placed API keys and the
+/// request body to whatever host the redirect names.
 ///
 /// # Errors
 ///
@@ -146,6 +152,15 @@ pub trait Sleep: Send + Sync + fmt::Debug {
 }
 
 impl<T: Sleep + ?Sized> Sleep for Arc<T> {
+    fn sleep(&self, duration: Duration) -> BoxFuture<'static, ()> {
+        (**self).sleep(duration)
+    }
+}
+
+// Mirrors the `Box<T>` impl for `Transport`. `Box` is a fundamental type, so a
+// downstream crate may write `impl Sleep for Box<TheirSleeper>` today; adding
+// this blanket impl after release would then break it.
+impl<T: Sleep + ?Sized> Sleep for Box<T> {
     fn sleep(&self, duration: Duration) -> BoxFuture<'static, ()> {
         (**self).sleep(duration)
     }
@@ -522,8 +537,7 @@ impl std::error::Error for TransportError {
 /// Backend-agnostic `multipart/form-data` encoder (RFC 2046 / RFC 7578).
 ///
 /// Emitted only for SDKs with multipart operations, behind the default-on
-/// `multipart` cargo feature (which also carries the `getrandom` dependency
-/// used for boundary entropy) — so crates without uploads ship neither.
+/// `multipart` cargo feature — so crates without uploads ship none of it.
 /// Vendored so multipart uploads work identically on every [`Transport`]
 /// instead of depending on a reqwest-only feature. All-buffered forms encode
 /// to a buffered [`SdkBody`] and therefore stay retry-eligible; a form with
@@ -727,10 +741,11 @@ pub mod multipart {
     /// buffered too — and therefore retry-eligible; if any part streams, the
     /// whole body is a one-shot stream.
     ///
-    /// The boundary carries 128 bits of OS randomness so untrusted part
-    /// content cannot predict and embed it. Field names and filenames are
-    /// escaped per RFC 7578 (double quote, CR, and LF percent-encoded) so
-    /// spec- or user-derived values cannot inject headers or close the part.
+    /// The boundary carries 128 unpredictable bits (SipHash keyed from the
+    /// OS random source) so untrusted part content cannot predict and embed
+    /// it. Field names and filenames are escaped per RFC 7578 (double quote,
+    /// CR, and LF percent-encoded) so spec- or user-derived values cannot
+    /// inject headers or close the part.
     pub fn encode(parts: Vec<Part>) -> (String, SdkBody) {
         let boundary = boundary();
         let content_type = format!("multipart/form-data; boundary={boundary}");
@@ -815,23 +830,14 @@ pub mod multipart {
         format!("--{boundary}--\r\n")
     }
 
-    /// Generates a boundary with 128 bits of OS randomness.
+    /// Generates a boundary from 128 unpredictable bits.
     ///
-    /// This is the crate's one entropy exception: multipart boundaries must be
-    /// unpredictable so untrusted part content cannot embed them. If the OS
-    /// RNG fails (effectively unheard of), the infallible signature falls back
-    /// to wall-clock nanos — boundary uniqueness degrades but encoding never
-    /// panics.
+    /// Multipart boundaries must be unpredictable so untrusted part content
+    /// cannot embed them; see `crate::random::random_bytes` for why the
+    /// standard library's seeded hasher is enough for that.
     fn boundary() -> String {
         const HEX: &[u8; 16] = b"0123456789abcdef";
-        let mut seed = [0u8; 16];
-        if getrandom::fill(&mut seed).is_err() {
-            let nanos = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .map(|elapsed| elapsed.as_nanos())
-                .unwrap_or(0);
-            seed = nanos.to_le_bytes();
-        }
+        let seed = crate::random::random_bytes();
         let mut boundary = String::with_capacity(7 + seed.len() * 2);
         boundary.push_str("scalar-");
         for byte in seed {
@@ -974,6 +980,21 @@ pub mod multipart {
             assert!(buffered.is_retryable(), "an all-buffered form must stay retry-eligible");
             assert!(!streaming.is_retryable(), "a streamed part must force a single attempt");
         }
+
+        #[test]
+        fn boundaries_are_unique_hex_tokens() {
+            let mut seen = std::collections::HashSet::new();
+            for _ in 0..10_000 {
+                let boundary = boundary();
+                let token = boundary.strip_prefix("scalar-").expect("the boundary keeps its prefix");
+                assert_eq!(token.len(), 32, "128 bits render as 32 hex digits: {boundary}");
+                assert!(
+                    token.bytes().all(|byte| byte.is_ascii_hexdigit()),
+                    "non-hex boundary: {boundary}"
+                );
+                assert!(seen.insert(boundary.clone()), "duplicate boundary: {boundary}");
+            }
+        }
     }
 }
 
@@ -1034,8 +1055,13 @@ struct MockState {
 
 /// A request captured by [`MockTransport`], with its body fully buffered so
 /// tests can assert on the exact bytes sent.
+///
+/// The fields stay public for reading; `#[non_exhaustive]` keeps callers from
+/// constructing or exhaustively destructuring one, so a field can be added
+/// later without a breaking release.
 #[cfg(feature = "mock")]
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct RecordedRequest {
     /// The request method.
     pub method: http::Method,

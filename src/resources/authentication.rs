@@ -110,7 +110,7 @@ impl CreateUserRequestBuilder {
 #[must_use = "a request builder does nothing until `.send().await` is called"]
 pub struct CreateTokenRequestBuilder {
     client: crate::client::Galaxy,
-    body: Option<crate::models::Credentials>,
+    body: Option<crate::models::AuthenticationCreateTokenBody>,
     idempotency_key: Option<String>,
     timeout: Option<std::time::Duration>,
     max_retries: Option<u32>,
@@ -128,7 +128,7 @@ impl CreateTokenRequestBuilder {
     }
 
     /// Body for credentials to authenticate a user
-    pub fn body(mut self, value: crate::models::Credentials) -> Self {
+    pub fn body(mut self, value: crate::models::AuthenticationCreateTokenBody) -> Self {
         self.body = Some(value);
         self
     }

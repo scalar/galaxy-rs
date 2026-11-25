@@ -2,7 +2,7 @@
 
 ## Operations
 
-### client.planets().list_all_data()
+### client.planets().list()
 
 Get all planets
 
@@ -42,7 +42,7 @@ Delete a planet
 - HTTP: `DELETE /planets/{planetId}`
 - Errors: `404`
 
-### client.planets().delte_image(…)
+### client.planets().upload_image(…)
 
 Upload an image to a planet
 
@@ -93,4 +93,3 @@ Get authenticated user
 - `CelestialBody`
 - `Planet`
 - `Satellite`
-- `PaginatedResource`
